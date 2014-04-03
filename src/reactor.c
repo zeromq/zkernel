@@ -134,7 +134,6 @@ s_loop (void *udata)
             const uint32_t what = events [i].events;
             struct event_source *ev_src =
                 (struct event_source *) events [i].data.ptr;
-            uint32_t event_mask = 0;
             if (ev_src->fd == self->ctrl_fd) {
                 printf ("eventfd event\n");
                 struct msg_t *tail =
@@ -151,7 +150,6 @@ s_loop (void *udata)
                     tail = tail->next;
                     free (msg);
                 }
-                event_mask = ev_src->event_mask;
             }
             else
             if ((what & (EPOLLERR | EPOLLHUP)) != 0) {
@@ -171,23 +169,21 @@ s_loop (void *udata)
                     &ev_src->handler, input_flag, output_flag);
 #define ZKERNEL_POLLIN 1
 #define ZKERNEL_POLLOUT 2
-                if ((rc & (ZKERNEL_POLLIN | ZKERNEL_POLLOUT)) != 0)
-                    event_mask |= EPOLLONESHOT | EPOLLET;
+                uint32_t event_mask = 0;
                 if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
-                    event_mask |= EPOLLIN;
+                    event_mask |= EPOLLIN | EPOLLONESHOT | EPOLLET;
                 if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
-                    event_mask |= EPOLLOUT;
-            }
-            if (ev_src->fd != -1
-            &&  ev_src->event_mask != event_mask) {
-                struct epoll_event ev = {
-                    .events = event_mask,
-                    .data = ev_src
-                };
-                const int rc = epoll_ctl (
-                    self->poll_fd, EPOLL_CTL_MOD, ev_src->fd, &ev);
-                assert (rc == 0);
-                ev_src->event_mask = event_mask;
+                    event_mask |= EPOLLOUT | EPOLLONESHOT | EPOLLET;
+                if (ev_src->event_mask != event_mask) {
+                    struct epoll_event ev = {
+                        .events = event_mask,
+                        .data = ev_src
+                    };
+                    const int rc = epoll_ctl (
+                        self->poll_fd, EPOLL_CTL_MOD, ev_src->fd, &ev);
+                    assert (rc == 0);
+                    ev_src->event_mask = event_mask;
+                }
             }
         }
     }
