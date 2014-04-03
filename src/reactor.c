@@ -18,7 +18,7 @@
 struct event_source {
     int fd;
     uint32_t event_mask;
-    io_handler_t *owner;
+    io_handler_t handler;
 };
 
 struct reactor {
@@ -34,6 +34,9 @@ static void *
 
 static int
     s_send_msg (void *self_, struct msg_t *msg);
+
+static int
+    s_bind (reactor_t *self, int fd, io_handler_t *handler);
 
 reactor_t *
 reactor_new ()
@@ -91,7 +94,7 @@ reactor_destroy (reactor_t **self_p)
         reactor_t *self = *self_p;
         struct msg_t *msg = malloc (sizeof *msg);
         assert (msg);
-        *msg = (struct msg_t) { .cmd = 1 };
+        *msg = (struct msg_t) { .cmd = ZKERNEL_KILL };
         s_send_msg (self, msg);
         pthread_join (self->thread_handle, NULL);
         close (self->poll_fd);
@@ -140,8 +143,10 @@ s_loop (void *udata)
                 const int rc = read (self->ctrl_fd, &x, sizeof x);
                 assert (rc == sizeof x);
                 while (tail) {
-                    if (tail->cmd == 1)
+                    if (tail->cmd == ZKERNEL_KILL)
                         stop = 1;
+                    if (tail->cmd == ZKERNEL_BIND)
+                        s_bind (self, tail->fd, &tail->handler);
                     struct msg_t *msg = tail;
                     tail = tail->next;
                     free (msg);
@@ -149,15 +154,21 @@ s_loop (void *udata)
                 event_mask = ev_src->event_mask;
             }
             else
-            if ((what & (EPOLLERR | EPOLLHUP)) != 0)
-                io_handler_error (ev_src->owner);
+            if ((what & (EPOLLERR | EPOLLHUP)) != 0) {
+                io_handler_error (&ev_src->handler);
+                struct epoll_event ev;
+                const int rc =
+                    epoll_ctl (self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
+                assert (rc == 0);
+                ev_src->fd = -1;
+            }
             else {
                 const bool input_flag =
                     (what & EPOLLIN) == EPOLLIN;
                 const bool output_flag =
                     (what & EPOLLOUT) == EPOLLOUT;
                 const int rc = io_handler_event (
-                    ev_src->owner, input_flag, output_flag);
+                    &ev_src->handler, input_flag, output_flag);
 #define ZKERNEL_POLLIN 1
 #define ZKERNEL_POLLOUT 2
                 if ((rc & (ZKERNEL_POLLIN | ZKERNEL_POLLOUT)) != 0)
@@ -167,7 +178,8 @@ s_loop (void *udata)
                 if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
                     event_mask |= EPOLLOUT;
             }
-            if (ev_src->event_mask != event_mask) {
+            if (ev_src->fd != -1
+            &&  ev_src->event_mask != event_mask) {
                 struct epoll_event ev = {
                     .events = event_mask,
                     .data = ev_src
@@ -181,6 +193,34 @@ s_loop (void *udata)
     }
 
     return NULL;
+}
+
+//  We should generate response
+//  There should be a way to release all event sources on
+//  reactor termination
+static int
+s_bind (reactor_t *self, int fd, io_handler_t *handler)
+{
+    assert (self);
+    if (fd == -1)
+        return -1;
+    struct event_source *event_source = malloc (sizeof *event_source);
+    if (!event_source)
+        return -1;
+    *event_source = (struct event_source) {
+        .fd = fd,
+        .event_mask = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLONESHOT,
+        .handler = *handler
+    };
+    //  is epollet ok (what happens if data are already ready)?
+    struct epoll_event ev = {
+        .events = event_source->event_mask,
+        .data = event_source
+    };
+    const int rc = epoll_ctl (self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
+    assert (rc == 0);
+
+    return 0;
 }
 
 static int
