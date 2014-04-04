@@ -3,9 +3,11 @@
 #ifndef __IO_HANDLER_H_INCLUDED__
 #define __IO_HANDLER_H_INCLUDED__
 
+#include <stdint.h>
+
 struct io_handler_ops {
+    int (*event) (void *handler, uint32_t flags);
     void (*error) (void *handler);
-    int (*event) (void *handler, int input_flag, int output_flag);
 };
 
 struct io_handler {
@@ -22,9 +24,9 @@ io_handler_error (io_handler_t *self)
 }
 
 inline int
-io_handler_event (io_handler_t *self, int input_flag, int output_flag)
+io_handler_event (io_handler_t *self, uint32_t flags)
 {
-    return self->ops->event (self->object, input_flag, output_flag);
+    return self->ops->event (self->object, flags);
 }
 
 #endif

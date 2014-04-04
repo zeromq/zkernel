@@ -169,12 +169,18 @@ s_loop (void *udata)
                 ev_src->fd = -1;
             }
             else {
-                const bool input_flag =
-                    (what & EPOLLIN) == EPOLLIN;
-                const bool output_flag =
-                    (what & EPOLLOUT) == EPOLLOUT;
-                const int rc = io_handler_event (
-                    &ev_src->handler, input_flag, output_flag);
+                uint32_t flags = 0;
+#define ZKERNEL_INPUT_READY     0x01
+#define ZKERNEL_OUTPUT_READY    0x02
+                if ((what & EPOLLIN) == EPOLLIN) {
+                    flags |= ZKERNEL_INPUT_READY;
+                    ev_src->event_mask &= ~EPOLLIN;
+                }
+                if ((what & EPOLLOUT) == EPOLLOUT) {
+                    flags |= ZKERNEL_OUTPUT_READY;
+                    ev_src->event_mask &= ~EPOLLOUT;
+                }
+                const int rc = io_handler_event (&ev_src->handler, flags);
 #define ZKERNEL_POLLIN 1
 #define ZKERNEL_POLLOUT 2
                 uint32_t event_mask = 0;

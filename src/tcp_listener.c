@@ -18,7 +18,7 @@ struct tcp_listener {
 };
 
 static int
-    io_event (void *self_, int input_flag, int output_flag);
+    io_event (void *self_, uint32_t flags);
 
 static void
     io_error (void *self_);
@@ -99,7 +99,7 @@ tcp_listener_io_handler (tcp_listener_t *self)
 }
 
 static int
-io_event (void *self_, int input_flag, int output_flag)
+io_event (void *self_, uint32_t flags)
 {
     tcp_listener_t *self = (tcp_listener_t *) self_;
     assert (self);
