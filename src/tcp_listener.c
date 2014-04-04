@@ -66,7 +66,8 @@ tcp_listener_bind (tcp_listener_t *self, unsigned short port)
         return -1;
     }
     rc = listen (fd, 32);
-    if (rc == -1)
+    if (rc == -1) {
+        close (fd);
         return -1;
     }
     //  Set the socket into non-blocking mode
