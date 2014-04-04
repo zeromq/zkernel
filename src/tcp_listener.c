@@ -65,7 +65,7 @@ tcp_listener_bind (tcp_listener_t *self, unsigned short port)
         close (fd);
         return -1;
     }
-    const int rc2 = listen (fd, 32);
+    rc = listen (fd, 32);
     if (rc == -1)
         return -1;
     }
