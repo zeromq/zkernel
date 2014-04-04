@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <sys/eventfd.h>
 #include <assert.h>
+#include <poll.h>
+#include <errno.h>
 
 #include "reactor.h"
 #include "tcp_listener.h"
@@ -20,6 +22,9 @@ struct socket {
 
 static int
     s_enqueue_msg (void *self_, struct msg_t *msg);
+
+static int
+    s_wait_for_reply (socket_t *self, struct mailbox *peer);
 
 socket_t *
 socket_new (reactor_t *reactor)
@@ -71,11 +76,12 @@ socket_bind (socket_t *self, unsigned short port)
         goto fail;
     *msg = (struct msg_t) {
         .cmd = ZKERNEL_BIND,
+        .reply_to = self->mailbox_ifc,
         .fd = tcp_listener_fd (listener),
         .handler = tcp_listener_io_handler (listener)
     };
     mailbox_enqueue (&self->reactor, msg);
-    //  wait for response
+    s_wait_for_reply (self, &self->reactor);
     return 0;
 
 fail:
@@ -102,5 +108,31 @@ s_enqueue_msg (void *self_, struct msg_t *msg)
         const int rc = write (self->ctrl_fd, &v, sizeof v);
         assert (rc == sizeof v);
     }
+    return 0;
+}
+
+static int
+s_wait_for_reply (socket_t *self, struct mailbox *peer)
+{
+    void *ptr = atomic_ptr_swap (&self->mbox, NULL);
+    if (ptr == NULL) {
+        ptr = atomic_ptr_cas (&self->mbox, NULL, self);
+        if (ptr == NULL) {
+            struct pollfd pollfd = { .fd = self->ctrl_fd, .events = POLLIN };
+            int rc = poll (&pollfd, 1, -1);
+            while (rc == -1) {
+                assert (errno == EINTR);
+                rc = poll (&pollfd, 1, -1);
+            }
+            assert (rc == 1);
+            ptr = atomic_ptr_swap (&self->mbox, NULL);
+            assert (ptr);
+            uint64_t buf;
+            rc = read (self->ctrl_fd, &buf, sizeof buf);
+            assert (rc == sizeof buf);
+        }
+    }
+    struct msg_t *msg = (struct msg_t *) ptr;
+    free (msg);
     return 0;
 }

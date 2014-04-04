@@ -136,19 +136,27 @@ s_loop (void *udata)
                 (struct event_source *) events [i].data.ptr;
             if (ev_src->fd == self->ctrl_fd) {
                 printf ("eventfd event\n");
-                struct msg_t *tail =
-                    (struct msg_t *) atomic_ptr_swap ( &self->lifo, NULL);
+                struct msg_t *msg =
+                    (struct msg_t *) atomic_ptr_swap (&self->lifo, NULL);
+                assert (msg);
                 uint64_t x;
                 const int rc = read (self->ctrl_fd, &x, sizeof x);
                 assert (rc == sizeof x);
-                while (tail) {
-                    if (tail->cmd == ZKERNEL_KILL)
+                while (msg) {
+                    struct msg_t *next_msg = msg->next;
+                    if (msg->cmd == ZKERNEL_KILL) {
                         stop = 1;
-                    if (tail->cmd == ZKERNEL_BIND)
-                        s_bind (self, tail->fd, &tail->handler);
-                    struct msg_t *msg = tail;
-                    tail = tail->next;
-                    free (msg);
+                        free (msg);
+                    }
+                    else
+                    if (msg->cmd == ZKERNEL_BIND) {
+                        s_bind (self, msg->fd, &msg->handler);
+                        //  Echo request (to test reactor->socket communication path)
+                        mailbox_enqueue (&msg->reply_to, msg);
+                    }
+                    else
+                        free (msg);
+                    msg = next_msg;
                 }
             }
             else

@@ -10,12 +10,7 @@ typedef struct mailbox mailbox_t;
 
 #include "io_handler.h"
 
-struct msg_t {
-    int cmd;
-    struct msg_t *next;
-    int fd;
-    io_handler_t handler;
-};
+struct msg_t;
 
 struct mailbox_ftab {
     int (*enqueue)(void *, struct msg_t *msg);
@@ -28,5 +23,13 @@ struct mailbox {
 
 int
     mailbox_enqueue (mailbox_t *self, struct msg_t *msg);
+
+struct msg_t {
+    int cmd;
+    struct mailbox reply_to;
+    struct msg_t *next;
+    int fd;
+    io_handler_t handler;
+};
 
 #endif
