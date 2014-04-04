@@ -9,11 +9,17 @@
 #include "tcp_listener.h"
 #include "mailbox.h"
 #include "socket.h"
+#include "atomic.h"
 
 struct socket {
     int ctrl_fd;
     struct mailbox reactor;
+    void *mbox;
+    struct mailbox mailbox_ifc;
 };
+
+static int
+    s_enqueue_msg (void *self_, struct msg_t *msg);
 
 socket_t *
 socket_new (reactor_t *reactor)
@@ -29,7 +35,11 @@ socket_new (reactor_t *reactor)
     }
     *self = (socket_t) {
         .ctrl_fd = ctrl_fd,
-        .reactor = reactor_mailbox (reactor)
+        .reactor = reactor_mailbox (reactor),
+        .mailbox_ifc = {
+            .object = self,
+            .ftab = { .enqueue = s_enqueue_msg }
+        }
     };
     return self;
 }
@@ -72,4 +82,25 @@ fail:
     if (listener)
         tcp_listener_destroy (&listener);
     return -1;
+}
+
+static int
+s_enqueue_msg (void *self_, struct msg_t *msg)
+{
+    socket_t *self = (socket_t *) self_;
+    assert (self);
+    void *tail = atomic_ptr_get (&self->mbox);
+    atomic_ptr_set ((void **) &msg->next, tail == self? NULL: tail);
+    void *prev = atomic_ptr_cas (&self->mbox, tail, msg);
+    while (prev != tail) {
+        tail = prev;
+        atomic_ptr_set ((void **) &msg->next, tail);
+        prev = atomic_ptr_cas (&self->mbox, tail, msg);
+    }
+    if (prev == self) {
+        uint64_t v = 1;
+        const int rc = write (self->ctrl_fd, &v, sizeof v);
+        assert (rc == sizeof v);
+    }
+    return 0;
 }
