@@ -4,7 +4,6 @@
 #include <unistd.h>
 #include <sys/eventfd.h>
 #include <assert.h>
-#include <poll.h>
 #include <errno.h>
 
 #include "reactor.h"
@@ -118,18 +117,15 @@ s_wait_for_reply (socket_t *self, struct mailbox *peer)
     if (ptr == NULL) {
         ptr = atomic_ptr_cas (&self->mbox, NULL, self);
         if (ptr == NULL) {
-            struct pollfd pollfd = { .fd = self->ctrl_fd, .events = POLLIN };
-            int rc = poll (&pollfd, 1, -1);
+            uint64_t buf;
+            int rc = read (self->ctrl_fd, &buf, sizeof buf);
             while (rc == -1) {
                 assert (errno == EINTR);
-                rc = poll (&pollfd, 1, -1);
+                rc = read (self->ctrl_fd, &buf, sizeof buf);
             }
-            assert (rc == 1);
+            assert (rc == sizeof buf);
             ptr = atomic_ptr_swap (&self->mbox, NULL);
             assert (ptr);
-            uint64_t buf;
-            rc = read (self->ctrl_fd, &buf, sizeof buf);
-            assert (rc == sizeof buf);
         }
     }
     struct msg_t *msg = (struct msg_t *) ptr;
