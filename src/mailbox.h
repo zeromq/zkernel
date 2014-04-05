@@ -5,8 +5,8 @@
 
 typedef struct mailbox mailbox_t;
 
-#define ZKERNEL_KILL    1
-#define ZKERNEL_BIND    2
+#define ZKERNEL_KILL        1
+#define ZKERNEL_REGISTER    2
 
 #include "io_handler.h"
 

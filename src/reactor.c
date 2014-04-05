@@ -36,7 +36,7 @@ static int
     s_send_msg (void *self_, struct msg_t *msg);
 
 static int
-    s_bind (reactor_t *self, int fd, io_handler_t *handler);
+    s_register (reactor_t *self, int fd, io_handler_t *handler);
 
 reactor_t *
 reactor_new ()
@@ -149,8 +149,8 @@ s_loop (void *udata)
                         free (msg);
                     }
                     else
-                    if (msg->cmd == ZKERNEL_BIND) {
-                        s_bind (self, msg->fd, &msg->handler);
+                    if (msg->cmd == ZKERNEL_REGISTER) {
+                        s_register (self, msg->fd, &msg->handler);
                         //  Echo request (to test reactor->socket communication path)
                         mailbox_enqueue (&msg->reply_to, msg);
                     }
@@ -209,7 +209,7 @@ s_loop (void *udata)
 //  There should be a way to release all event sources on
 //  reactor termination
 static int
-s_bind (reactor_t *self, int fd, io_handler_t *handler)
+s_register (reactor_t *self, int fd, io_handler_t *handler)
 {
     assert (self);
     if (fd == -1)

@@ -74,7 +74,7 @@ socket_bind (socket_t *self, unsigned short port)
     if (!msg)
         goto fail;
     *msg = (struct msg_t) {
-        .cmd = ZKERNEL_BIND,
+        .cmd = ZKERNEL_REGISTER,
         .reply_to = self->mailbox_ifc,
         .fd = tcp_listener_fd (listener),
         .handler = tcp_listener_io_handler (listener)
