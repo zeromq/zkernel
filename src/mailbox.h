@@ -8,6 +8,8 @@ typedef struct mailbox mailbox_t;
 #define ZKERNEL_KILL        1
 #define ZKERNEL_REGISTER    2
 
+#define ZKERNEL_EVENT_NEW_SESSION   3
+
 #include "io_handler.h"
 
 struct msg_t;
@@ -30,6 +32,7 @@ struct msg_t {
     struct msg_t *next;
     int fd;
     io_handler_t handler;
+    void *ptr;
 };
 
 #endif
