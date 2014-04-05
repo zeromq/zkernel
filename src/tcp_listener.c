@@ -59,8 +59,8 @@ tcp_listener_bind (tcp_listener_t *self, unsigned short port)
         .sin_port = htons (port),
         .sin_addr.s_addr = htonl (INADDR_ANY)
     };
-    const int rc =
-        bind (fd, (struct sockaddr *) &server_addr, sizeof server_addr);
+    int rc = bind
+        (fd, (struct sockaddr *) &server_addr, sizeof server_addr);
     if (rc == -1) {
         close (fd);
         return -1;

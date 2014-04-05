@@ -64,7 +64,7 @@ socket_destroy (socket_t **self_p)
 int
 socket_bind (socket_t *self, unsigned short port)
 {
-    tcp_listener_t *listener = tcp_listener_new ();
+    tcp_listener_t *listener = tcp_listener_new (&self->mailbox_ifc);
     if (!listener)
         goto fail;
     int rc = tcp_listener_bind (listener, port);

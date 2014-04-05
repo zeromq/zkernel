@@ -3,12 +3,13 @@
 #ifndef __TCP_LISTENER_H_INCLUDED__
 #define __TCP_LISTENER_H_INCLUDED__
 
+#include "mailbox.h"
 #include "io_handler.h"
 
 typedef struct tcp_listener tcp_listener_t;
 
 tcp_listener_t *
-    tcp_listener_new ();
+    tcp_listener_new (struct mailbox *owner);
 
 void
     tcp_listener_destroy (tcp_listener_t **self_p);
