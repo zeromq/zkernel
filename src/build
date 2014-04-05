@@ -1,1 +1,1 @@
-gcc -std=c99 main.c reactor.c atomic.c mailbox.c io_handler.c tcp_listener.c socket.c -lpthread
+gcc -std=c99 main.c reactor.c atomic.c mailbox.c io_handler.c tcp_listener.c socket.c tcp_session.c -lpthread
