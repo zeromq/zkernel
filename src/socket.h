@@ -14,4 +14,7 @@ void
 int
     socket_bind (socket_t *self, unsigned short port);
 
+void
+    socket_noop (socket_t *self);
+
 #endif

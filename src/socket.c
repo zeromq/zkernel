@@ -1,5 +1,6 @@
 // Socket class
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/eventfd.h>
@@ -87,6 +88,20 @@ fail:
     if (listener)
         tcp_listener_destroy (&listener);
     return -1;
+}
+
+void
+socket_noop (socket_t *self)
+{
+    assert (self);
+    void *ptr = atomic_ptr_swap (&self->mbox, NULL);
+    struct msg_t *msg = (struct msg_t *) ptr;
+    while (msg) {
+        printf ("message received\n");
+        struct msg_t *next_msg = msg->next;
+        free (msg);
+        msg = next_msg;
+    }
 }
 
 static int
