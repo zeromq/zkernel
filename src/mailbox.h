@@ -26,13 +26,4 @@ struct mailbox {
 int
     mailbox_enqueue (mailbox_t *self, struct msg_t *msg);
 
-struct msg_t {
-    int cmd;
-    struct mailbox reply_to;
-    struct msg_t *next;
-    int fd;
-    io_handler_t handler;
-    void *ptr;
-};
-
 #endif

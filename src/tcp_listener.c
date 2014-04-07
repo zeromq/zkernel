@@ -10,6 +10,7 @@
 #include "mailbox.h"
 #include "tcp_listener.h"
 #include "tcp_session.h"
+#include "msg.h"
 #include <arpa/inet.h>
 #include <errno.h>
 
@@ -117,15 +118,12 @@ io_event (void *self_, uint32_t flags)
             close (rc);
             continue;
         }
-        struct msg_t *msg = malloc (sizeof *msg);
+        msg_t *msg = msg_new (ZKERNEL_EVENT_NEW_SESSION);
         if (!msg) {
             tcp_session_destroy (&session);
             continue;
         }
-        *msg = (struct msg_t) {
-            .cmd = ZKERNEL_EVENT_NEW_SESSION,
-            .ptr = session
-        };
+        msg->ptr = session;
         mailbox_enqueue (self->owner, msg);
     }
     return 1 | 2;

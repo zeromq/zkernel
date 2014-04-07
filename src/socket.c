@@ -12,6 +12,7 @@
 #include "mailbox.h"
 #include "socket.h"
 #include "atomic.h"
+#include "msg.h"
 
 struct socket {
     int ctrl_fd;
@@ -71,15 +72,13 @@ socket_bind (socket_t *self, unsigned short port)
     int rc = tcp_listener_bind (listener, port);
     if (rc == -1)
         goto fail;
-    struct msg_t *msg = malloc (sizeof *msg);
+    msg_t *msg = msg_new (ZKERNEL_REGISTER);
     if (!msg)
         goto fail;
-    *msg = (struct msg_t) {
-        .cmd = ZKERNEL_REGISTER,
-        .reply_to = self->mailbox_ifc,
-        .fd = tcp_listener_fd (listener),
-        .handler = tcp_listener_io_handler (listener)
-    };
+    msg->reply_to = self->mailbox_ifc;
+    msg->fd = tcp_listener_fd (listener);
+    msg->handler = tcp_listener_io_handler (listener);
+
     mailbox_enqueue (&self->reactor, msg);
     s_wait_for_reply (self, &self->reactor);
     return 0;
@@ -99,7 +98,7 @@ socket_noop (socket_t *self)
     while (msg) {
         printf ("message received\n");
         struct msg_t *next_msg = msg->next;
-        free (msg);
+        msg_destroy (&msg);
         msg = next_msg;
     }
 }
@@ -144,6 +143,6 @@ s_wait_for_reply (socket_t *self, struct mailbox *peer)
         }
     }
     struct msg_t *msg = (struct msg_t *) ptr;
-    free (msg);
+    msg_destroy (&msg);
     return 0;
 }

@@ -7,6 +7,7 @@
 #include "mailbox.h"
 #include "reactor.h"
 #include "socket.h"
+#include "msg.h"
 
 int main()
 {
@@ -22,7 +23,7 @@ int main()
     assert (rc != -1);
 
     for (int i = 0; i < 10; i++) {
-        struct msg_t *msg = malloc (sizeof *msg);
+        struct msg_t *msg = msg_new (0);
         mailbox_enqueue (&mbox, msg);
         printf ("press any key\n");
         getchar ();

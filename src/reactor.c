@@ -14,6 +14,7 @@
 #include "atomic.h"
 #include "reactor.h"
 #include "io_handler.h"
+#include "msg.h"
 
 struct event_source {
     int fd;
@@ -33,7 +34,7 @@ static void *
     s_loop (void *udata);
 
 static int
-    s_send_msg (void *self_, struct msg_t *msg);
+    s_send_msg (void *self_, msg_t *msg);
 
 static int
     s_register (reactor_t *self, int fd, io_handler_t *handler);
@@ -92,9 +93,8 @@ reactor_destroy (reactor_t **self_p)
     assert (self_p);
     if (*self_p) {
         reactor_t *self = *self_p;
-        struct msg_t *msg = malloc (sizeof *msg);
+        msg_t *msg = msg_new (ZKERNEL_KILL);
         assert (msg);
-        *msg = (struct msg_t) { .cmd = ZKERNEL_KILL };
         s_send_msg (self, msg);
         pthread_join (self->thread_handle, NULL);
         close (self->poll_fd);
@@ -145,8 +145,8 @@ s_loop (void *udata)
                 while (msg) {
                     struct msg_t *next_msg = msg->next;
                     if (msg->cmd == ZKERNEL_KILL) {
+                        msg_destroy (&msg);
                         stop = 1;
-                        free (msg);
                     }
                     else
                     if (msg->cmd == ZKERNEL_REGISTER) {
@@ -155,7 +155,7 @@ s_loop (void *udata)
                         mailbox_enqueue (&msg->reply_to, msg);
                     }
                     else
-                        free (msg);
+                        msg_destroy (&msg);
                     msg = next_msg;
                 }
             }
