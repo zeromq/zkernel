@@ -77,3 +77,10 @@ tcp_session_io_handler (tcp_session_t *self)
     };
     return (struct io_handler) { .object = self, .ops = &ops };
 }
+
+int
+tcp_session_fd (tcp_session_t *self)
+{
+    assert (self);
+    return self->fd;
+}

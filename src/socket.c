@@ -9,6 +9,7 @@
 
 #include "reactor.h"
 #include "tcp_listener.h"
+#include "tcp_session.h"
 #include "mailbox.h"
 #include "socket.h"
 #include "atomic.h"
@@ -89,18 +90,38 @@ fail:
     return -1;
 }
 
+static void
+process_mbox (socket_t *self, msg_t *msg)
+{
+    while (msg) {
+        msg_t *next = msg->next;
+        switch (msg->cmd) {
+        case ZKERNEL_EVENT_NEW_SESSION: {
+            tcp_session_t *session = (tcp_session_t *) msg->ptr;
+            printf ("new session: %p\n", msg->ptr);
+            msg->cmd = ZKERNEL_REGISTER;
+            msg->reply_to = self->mailbox_ifc;
+            msg->fd = tcp_session_fd (session);
+            msg->handler = tcp_session_io_handler (session);
+            mailbox_enqueue (&self->reactor, msg);
+            break;
+                                        }
+        default:
+            printf ("unhandled message\n");
+            msg_destroy (&msg);
+            break;
+        }
+        msg = next;
+    }
+}
+
 void
 socket_noop (socket_t *self)
 {
     assert (self);
     void *ptr = atomic_ptr_swap (&self->mbox, NULL);
-    struct msg_t *msg = (struct msg_t *) ptr;
-    while (msg) {
-        printf ("message received\n");
-        struct msg_t *next_msg = msg->next;
-        msg_destroy (&msg);
-        msg = next_msg;
-    }
+    if (ptr)
+        process_mbox (self, (msg_t *) ptr);
 }
 
 static int
