@@ -221,12 +221,18 @@ s_register (reactor_t *self, int fd, io_handler_t *handler)
     assert (self);
     if (fd == -1)
         return -1;
+    rc = io_handler_event (handler, ZKERNEL_INPUT_READY | ZKERNEL_OUTPUT_READY);
+    uint32_t event_mask = 0;
+    if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
+        event_mask |= EPOLLIN | EPOLLONESHOT | EPOLLET;
+    if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
+        event_mask |= EPOLLOUT | EPOLLONESHOT | EPOLLET;
     struct event_source *event_source = malloc (sizeof *event_source);
     if (!event_source)
         return -1;
     *event_source = (struct event_source) {
         .fd = fd,
-        .event_mask = EPOLLIN | EPOLLOUT | EPOLLET | EPOLLONESHOT,
+        .event_mask = event_mask,
         .handler = *handler
     };
     //  is epollet ok (what happens if data are already ready)?
