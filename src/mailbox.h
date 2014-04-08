@@ -23,6 +23,8 @@ struct mailbox {
     struct mailbox_ftab ftab;
 };
 
+typedef struct mailbox mailbox_ifc_t;
+
 int
     mailbox_enqueue (mailbox_t *self, struct msg_t *msg);
 
