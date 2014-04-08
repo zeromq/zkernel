@@ -7,17 +7,19 @@
 #include <errno.h>
 
 #include "tcp_session.h"
+#include "msg.h"
 
 struct tcp_session {
     int fd;
+    mailbox_t *owner;
 };
 
 tcp_session_t *
-tcp_session_new (int fd)
+tcp_session_new (int fd, mailbox_t *owner)
 {
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self)
-        *self = (tcp_session_t) { .fd = fd };
+        *self = (tcp_session_t) { .fd = fd, .owner = owner };
     return self;
 }
 
@@ -49,6 +51,10 @@ io_event (void *self_, uint32_t flags)
         }
         if (rc == 0) {
             printf ("connection closed\n");
+            msg_t *msg = msg_new (ZKERNEL_SESSION_CLOSED);
+            assert (msg);
+            msg->ptr = self;
+            mailbox_enqueue (self->owner, msg);
             return 0;
         }
         else {
@@ -57,7 +63,7 @@ io_event (void *self_, uint32_t flags)
         }
     }
     else
-        return 1 | 2;
+        return 1;
 }
 
 static void

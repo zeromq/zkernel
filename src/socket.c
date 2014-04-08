@@ -95,9 +95,10 @@ process_mbox (socket_t *self, msg_t *msg)
 {
     while (msg) {
         msg_t *next = msg->next;
+        tcp_session_t *session;
         switch (msg->cmd) {
-        case ZKERNEL_EVENT_NEW_SESSION: {
-            tcp_session_t *session = (tcp_session_t *) msg->ptr;
+        case ZKERNEL_EVENT_NEW_SESSION:
+            session = (tcp_session_t *) msg->ptr;
             printf ("new session: %p\n", msg->ptr);
             msg->cmd = ZKERNEL_REGISTER;
             msg->reply_to = self->mailbox_ifc;
@@ -105,7 +106,10 @@ process_mbox (socket_t *self, msg_t *msg)
             msg->handler = tcp_session_io_handler (session);
             mailbox_enqueue (&self->reactor, msg);
             break;
-                                        }
+        case ZKERNEL_SESSION_CLOSED:
+            printf ("session %p closed\n", msg->ptr);
+            msg_destroy (&msg);
+            break;
         default:
             printf ("unhandled message\n");
             msg_destroy (&msg);

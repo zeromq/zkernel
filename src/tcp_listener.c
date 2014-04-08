@@ -107,7 +107,7 @@ io_event (void *self_, uint32_t flags)
         }
         printf ("connection accepted\n");
 
-        tcp_session_t *session = tcp_session_new (rc);
+        tcp_session_t *session = tcp_session_new (rc, self->owner);
         if (!session) {
             close (rc);
             continue;
