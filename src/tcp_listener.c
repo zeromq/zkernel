@@ -49,19 +49,25 @@ tcp_listener_destroy (tcp_listener_t **self_p)
 int
 tcp_listener_bind (tcp_listener_t *self, unsigned short port)
 {
+    int rc;
+
     assert (self);
     if (self->fd != -1)
         return -1;
     const int fd = socket (AF_INET, SOCK_STREAM, 0);
     if (fd == -1)
         return -1;
+    const int on = 1;
+    //  Allow port reuse
+    rc = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof on);
+    assert (rc == 0);
+
     struct sockaddr_in server_addr = {
         .sin_family = AF_INET,
         .sin_port = htons (port),
         .sin_addr.s_addr = htonl (INADDR_ANY)
     };
-    int rc = bind
-        (fd, (struct sockaddr *) &server_addr, sizeof server_addr);
+    rc = bind (fd, (struct sockaddr *) &server_addr, sizeof server_addr);
     if (rc == -1) {
         close (fd);
         return -1;
