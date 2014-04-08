@@ -9,6 +9,7 @@
 #include <sys/epoll.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "mailbox.h"
 #include "atomic.h"
@@ -211,6 +212,12 @@ s_loop (void *udata)
 static int
 s_register (reactor_t *self, int fd, io_handler_t *handler)
 {
+    //  Set the socket into non-blocking mode
+    const int flags = fcntl (fd, F_GETFL, 0);
+    assert (flags != -1);
+    int rc = fcntl (fd, F_SETFL, flags | O_NONBLOCK);
+    assert (rc == 0);
+
     assert (self);
     if (fd == -1)
         return -1;
@@ -227,7 +234,7 @@ s_register (reactor_t *self, int fd, io_handler_t *handler)
         .events = event_source->event_mask,
         .data = event_source
     };
-    const int rc = epoll_ctl (self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
+    rc = epoll_ctl (self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
     assert (rc == 0);
 
     return 0;

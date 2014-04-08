@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "mailbox.h"
@@ -72,11 +71,6 @@ tcp_listener_bind (tcp_listener_t *self, unsigned short port)
         close (fd);
         return -1;
     }
-    //  Set the socket into non-blocking mode
-    const int flags = fcntl (fd, F_GETFL, 0);
-    assert (flags != -1);
-    rc = fcntl (fd, F_SETFL, flags | O_NONBLOCK);
-    assert (rc == 0);
 
     self->fd = fd;
     return 0;
