@@ -19,6 +19,7 @@
 
 struct event_source {
     int fd;
+    uint64_t timer;
     uint32_t event_mask;
     io_handler_t handler;
 };
@@ -181,7 +182,15 @@ s_loop (void *udata)
                     flags |= ZKERNEL_OUTPUT_READY;
                     ev_src->event_mask &= ~EPOLLOUT;
                 }
-                const int rc = io_handler_event (&ev_src->handler, flags);
+                uint32_t timer_interval = 0;
+                const int rc = io_handler_event (
+                    &ev_src->handler, flags, &timer_interval);
+                if (timer_interval > 0) {
+                    //  get clock
+                    //  if there is timer already registered, cancel it
+                    //  register timer
+                    //  update ev_src->timer value
+                }
 #define ZKERNEL_POLLIN 1
 #define ZKERNEL_POLLOUT 2
                 uint32_t event_mask = 0;
@@ -221,7 +230,14 @@ s_register (reactor_t *self, int fd, io_handler_t *handler)
     assert (self);
     if (fd == -1)
         return -1;
-    rc = io_handler_event (handler, ZKERNEL_INPUT_READY | ZKERNEL_OUTPUT_READY);
+    uint32_t timer_interval = 0;
+    rc = io_handler_event (
+        handler, ZKERNEL_INPUT_READY | ZKERNEL_OUTPUT_READY, &timer_interval);
+    if (timer_interval > 0) {
+        //  get clock
+        //  register timer
+        //  update ev_src->timer value
+    }
     uint32_t event_mask = 0;
     if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
         event_mask |= EPOLLIN | EPOLLONESHOT | EPOLLET;

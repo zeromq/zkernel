@@ -37,7 +37,7 @@ tcp_session_destroy (tcp_session_t **self_p)
 }
 
 static int
-io_event (void *self_, uint32_t flags)
+io_event (void *self_, uint32_t flags, uint32_t *timer_interval)
 {
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);

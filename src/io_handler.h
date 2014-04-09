@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 struct io_handler_ops {
-    int (*event) (void *handler, uint32_t flags);
+    int (*event) (void *handler, uint32_t flags, uint32_t *timer_interval);
     void (*error) (void *handler);
 };
 
@@ -24,9 +24,9 @@ io_handler_error (io_handler_t *self)
 }
 
 inline int
-io_handler_event (io_handler_t *self, uint32_t flags)
+io_handler_event (io_handler_t *self, uint32_t flags, uint32_t *timer_interval)
 {
-    return self->ops->event (self->object, flags);
+    return self->ops->event (self->object, flags, timer_interval);
 }
 
 #endif
