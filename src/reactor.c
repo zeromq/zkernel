@@ -16,6 +16,7 @@
 #include "reactor.h"
 #include "io_handler.h"
 #include "msg.h"
+#include "clock.h"
 
 struct event_source {
     int fd;
@@ -24,12 +25,18 @@ struct event_source {
     io_handler_t handler;
 };
 
+struct timer {
+    uint64_t t;
+    struct event_source *ev_src;
+};
+
 struct reactor {
     int poll_fd;
     int ctrl_fd;
     struct event_source controler;
     void *lifo;
     pthread_t thread_handle;
+    struct timer timers [8];
 };
 
 static void *
@@ -40,6 +47,19 @@ static int
 
 static int
     s_register (reactor_t *self, int fd, io_handler_t *handler);
+
+
+static struct timer *
+    s_alloc_timer (reactor_t *self);
+
+static void
+    s_free_timer (struct timer *timer);
+
+struct timer *
+    s_next_timer (reactor_t *self);
+
+struct timer *
+    s_find_timer (reactor_t *self, struct event_source *ev_src);
 
 reactor_t *
 reactor_new ()
@@ -126,8 +146,15 @@ s_loop (void *udata)
 #define MAX_EVENTS 32
     struct epoll_event events [MAX_EVENTS];
 
+    uint64_t now = clock_now ();
     while (!stop) {
-        const int nfds = epoll_wait (self->poll_fd, events, MAX_EVENTS, -1);
+        struct timer *next_timer = s_next_timer (self);
+        const int max_wait =
+            next_timer == NULL
+                ? -1
+                : (next_timer->t < now? 0: now - next_timer->t);
+        const int nfds = epoll_wait (self->poll_fd, events, MAX_EVENTS, max_wait);
+        now = clock_now ();
         if (nfds == -1) {
             assert (errno == EINTR);
             continue;
@@ -186,10 +213,14 @@ s_loop (void *udata)
                 const int rc = io_handler_event (
                     &ev_src->handler, flags, &timer_interval);
                 if (timer_interval > 0) {
-                    //  get clock
-                    //  if there is timer already registered, cancel it
-                    //  register timer
-                    //  update ev_src->timer value
+                    struct timer *timer = NULL;
+                    if (ev_src->timer != 0)
+                        timer = s_find_timer (self, ev_src);
+                    else
+                        timer = s_alloc_timer (self);
+                    timer->t = now + timer_interval;
+                    timer->ev_src = ev_src;
+                    ev_src->timer = timer->t;
                 }
 #define ZKERNEL_POLLIN 1
 #define ZKERNEL_POLLOUT 2
@@ -210,6 +241,35 @@ s_loop (void *udata)
                 }
             }
         }
+        struct timer *timer = s_next_timer (self);
+        while (timer && timer->t < now) {
+            struct event_source *ev_src = timer->ev_src;
+            uint32_t timer_interval = 0;
+            const int rc = io_handler_event (
+                &ev_src->handler, 0, &timer_interval);
+            uint32_t event_mask = 0;
+            if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
+                event_mask |= EPOLLIN | EPOLLONESHOT | EPOLLET;
+            if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
+                event_mask |= EPOLLOUT | EPOLLONESHOT | EPOLLET;
+            if (ev_src->event_mask != event_mask) {
+                struct epoll_event ev = {
+                    .events = event_mask,
+                    .data = ev_src
+                };
+                const int rc = epoll_ctl (
+                    self->poll_fd, EPOLL_CTL_MOD, ev_src->fd, &ev);
+                assert (rc == 0);
+                ev_src->event_mask = event_mask;
+            }
+            if (timer_interval > 0) {
+                timer->t = now + timer_interval;
+                timer->ev_src = ev_src;
+                ev_src->timer = timer->t;
+            }
+            else
+                s_free_timer (timer);
+        }
     }
 
     return NULL;
@@ -221,23 +281,19 @@ s_loop (void *udata)
 static int
 s_register (reactor_t *self, int fd, io_handler_t *handler)
 {
+    assert (self);
+    if (fd == -1)
+        return -1;
+
     //  Set the socket into non-blocking mode
     const int flags = fcntl (fd, F_GETFL, 0);
     assert (flags != -1);
     int rc = fcntl (fd, F_SETFL, flags | O_NONBLOCK);
     assert (rc == 0);
 
-    assert (self);
-    if (fd == -1)
-        return -1;
     uint32_t timer_interval = 0;
     rc = io_handler_event (
         handler, ZKERNEL_INPUT_READY | ZKERNEL_OUTPUT_READY, &timer_interval);
-    if (timer_interval > 0) {
-        //  get clock
-        //  register timer
-        //  update ev_src->timer value
-    }
     uint32_t event_mask = 0;
     if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
         event_mask |= EPOLLIN | EPOLLONESHOT | EPOLLET;
@@ -258,6 +314,13 @@ s_register (reactor_t *self, int fd, io_handler_t *handler)
     };
     rc = epoll_ctl (self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
     assert (rc == 0);
+    if (timer_interval > 0) {
+        struct timer *timer = s_alloc_timer (self);
+        assert (timer);
+        timer->t = clock_now () + timer_interval;
+        timer->ev_src = event_source;
+        event_source->timer = timer->t;
+    }
 
     return 0;
 }
@@ -281,4 +344,39 @@ s_send_msg (void *self_, struct msg_t *msg)
         assert (rc == sizeof v);
     }
     return 0;
+}
+
+struct timer *
+s_alloc_timer (reactor_t *self)
+{
+    for (int i = 0; i < 8; i++) {
+        if (self->timers [i].t == 0)
+            return self->timers + i;
+    }
+    return NULL;
+}
+
+void
+s_free_timer (struct timer *timer)
+{
+    timer->t = 0;
+}
+
+struct timer *
+s_next_timer (reactor_t *self)
+{
+    struct timer *timer = NULL;
+    for (int i = 0; i < 8; i++)
+        if (timer == NULL || timer->t < self->timers [i].t)
+            timer = self->timers + i;
+    return timer;
+}
+
+struct timer *
+s_find_timer (reactor_t *self, struct event_source *ev_src)
+{
+    for (int i = 0; i < 8; i++)
+        if (self->timers [i].ev_src == ev_src)
+            return self->timers + 1;
+    return NULL;
 }
