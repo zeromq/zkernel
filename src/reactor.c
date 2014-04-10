@@ -152,7 +152,7 @@ s_loop (void *udata)
         const int max_wait =
             next_timer == NULL
                 ? -1
-                : (next_timer->t < now? 0: now - next_timer->t);
+                : (next_timer->t < now? 0: next_timer->t - now);
         const int nfds = epoll_wait (self->poll_fd, events, MAX_EVENTS, max_wait);
         now = clock_now ();
         if (nfds == -1) {
@@ -242,7 +242,7 @@ s_loop (void *udata)
             }
         }
         struct timer *timer = s_next_timer (self);
-        while (timer && timer->t < now) {
+        while (timer && timer->t <= now) {
             struct event_source *ev_src = timer->ev_src;
             uint32_t timer_interval = 0;
             const int rc = io_handler_event (
