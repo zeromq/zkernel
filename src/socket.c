@@ -1,6 +1,7 @@
 // Socket class
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/eventfd.h>
@@ -25,8 +26,8 @@ struct socket {
 static int
     s_enqueue_msg (void *self_, struct msg_t *msg);
 
-static int
-    s_wait_for_reply (socket_t *self, struct mailbox *peer);
+static msg_t *
+    s_wait_for_msgs (socket_t *self);
 
 socket_t *
 socket_new (reactor_t *reactor)
@@ -64,6 +65,38 @@ socket_destroy (socket_t **self_p)
     }
 }
 
+static void
+process_msg (socket_t *self, msg_t **msg_p)
+{
+    tcp_session_t *session;
+
+    assert (msg_p);
+    if (*msg_p == NULL)
+        return;
+    msg_t *msg = *msg_p;
+    *msg_p = NULL;
+
+    switch (msg->cmd) {
+    case ZKERNEL_EVENT_NEW_SESSION:
+        printf ("new session: %p\n", msg->ptr);
+        session = (tcp_session_t *) msg->ptr;
+        msg->cmd = ZKERNEL_REGISTER;
+        msg->reply_to = self->mailbox_ifc;
+        msg->fd = tcp_session_fd (session);
+        msg->handler = tcp_session_io_handler (session);
+        mailbox_enqueue (&self->reactor, msg);
+        break;
+    case ZKERNEL_SESSION_CLOSED:
+        printf ("session %p closed\n", msg->ptr);
+        msg_destroy (&msg);
+        break;
+    default:
+        printf ("unhandled message: %d\n", msg->cmd);
+        msg_destroy (&msg);
+        break;
+    }
+}
+
 int
 socket_bind (socket_t *self, unsigned short port)
 {
@@ -81,7 +114,18 @@ socket_bind (socket_t *self, unsigned short port)
     msg->handler = tcp_listener_io_handler (listener);
 
     mailbox_enqueue (&self->reactor, msg);
-    s_wait_for_reply (self, &self->reactor);
+    bool reply_received = false;
+    while (!reply_received) {
+        msg_t *msg = s_wait_for_msgs (self);
+        while (msg) {
+            if (msg->cmd == ZKERNEL_REGISTER)
+                reply_received = true;
+            msg_t *next = msg->next;
+            process_msg (self, &msg);
+            msg = next;
+        }
+    }
+
     return 0;
 
 fail:
@@ -95,26 +139,7 @@ process_mbox (socket_t *self, msg_t *msg)
 {
     while (msg) {
         msg_t *next = msg->next;
-        tcp_session_t *session;
-        switch (msg->cmd) {
-        case ZKERNEL_EVENT_NEW_SESSION:
-            session = (tcp_session_t *) msg->ptr;
-            printf ("new session: %p\n", msg->ptr);
-            msg->cmd = ZKERNEL_REGISTER;
-            msg->reply_to = self->mailbox_ifc;
-            msg->fd = tcp_session_fd (session);
-            msg->handler = tcp_session_io_handler (session);
-            mailbox_enqueue (&self->reactor, msg);
-            break;
-        case ZKERNEL_SESSION_CLOSED:
-            printf ("session %p closed\n", msg->ptr);
-            msg_destroy (&msg);
-            break;
-        default:
-            printf ("unhandled message\n");
-            msg_destroy (&msg);
-            break;
-        }
+        process_msg (self, &msg);
         msg = next;
     }
 }
@@ -149,8 +174,8 @@ s_enqueue_msg (void *self_, struct msg_t *msg)
     return 0;
 }
 
-static int
-s_wait_for_reply (socket_t *self, struct mailbox *peer)
+static msg_t *
+s_wait_for_msgs (socket_t *self)
 {
     void *ptr = atomic_ptr_swap (&self->mbox, NULL);
     if (ptr == NULL) {
@@ -168,6 +193,5 @@ s_wait_for_reply (socket_t *self, struct mailbox *peer)
         }
     }
     struct msg_t *msg = (struct msg_t *) ptr;
-    msg_destroy (&msg);
-    return 0;
+    return msg;
 }
