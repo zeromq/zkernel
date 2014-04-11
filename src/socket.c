@@ -137,6 +137,15 @@ fail:
 static void
 process_mbox (socket_t *self, msg_t *msg)
 {
+    //  Transform LIFO to FIFO
+    msg_t *prev = NULL;
+    while (msg->next) {
+        msg_t *next = msg->next;
+        msg->next = prev;
+        prev = msg;
+        msg = next;
+    }
+    msg->next = prev;
     while (msg) {
         msg_t *next = msg->next;
         process_msg (self, &msg);
@@ -193,5 +202,14 @@ s_wait_for_msgs (socket_t *self)
         }
     }
     struct msg_t *msg = (struct msg_t *) ptr;
+    //  Transform LIFO to FIFO
+    msg_t *prev = NULL;
+    while (msg->next) {
+        msg_t *next = msg->next;
+        msg->next = prev;
+        prev = msg;
+        msg = next;
+    }
+    msg->next = prev;
     return msg;
 }

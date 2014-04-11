@@ -171,6 +171,15 @@ s_loop (void *udata)
                 uint64_t x;
                 const int rc = read (self->ctrl_fd, &x, sizeof x);
                 assert (rc == sizeof x);
+                //  Transform LIFO to FIFO
+                msg_t *prev = NULL;
+                while (msg->next) {
+                    msg_t *next = msg->next;
+                    msg->next = prev;
+                    prev = msg;
+                    msg = next;
+                }
+                msg->next = prev;
                 while (msg) {
                     struct msg_t *next_msg = msg->next;
                     if (msg->cmd == ZKERNEL_KILL) {
