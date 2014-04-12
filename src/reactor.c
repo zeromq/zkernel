@@ -279,6 +279,7 @@ s_loop (void *udata)
             }
             else
                 s_free_timer (timer);
+            timer = s_next_timer (self);
         }
     }
 
