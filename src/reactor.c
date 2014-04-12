@@ -253,6 +253,7 @@ s_loop (void *udata)
         struct timer *timer = s_next_timer (self);
         while (timer && timer->t <= now) {
             struct event_source *ev_src = timer->ev_src;
+            assert (ev_src);
             uint32_t timer_interval = 0;
             const int rc = io_handler_event (
                 &ev_src->handler, 0, &timer_interval);
@@ -374,11 +375,11 @@ s_free_timer (struct timer *timer)
 struct timer *
 s_next_timer (reactor_t *self)
 {
-    struct timer *timer = NULL;
-    for (int i = 0; i < 8; i++)
-        if (timer == NULL || timer->t < self->timers [i].t)
+    struct timer *timer = self->timers;
+    for (int i = 1; i < 8; i++)
+        if (timer->t < self->timers [i].t)
             timer = self->timers + i;
-    return timer;
+    return timer->t > 0? timer: NULL;
 }
 
 struct timer *
