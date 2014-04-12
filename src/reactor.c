@@ -189,7 +189,7 @@ s_loop (void *udata)
                     else
                     if (msg->cmd == ZKERNEL_REGISTER) {
                         s_register (self, msg->fd, &msg->handler);
-                        //  Echo request (to test reactor->socket communication path)
+                        //  Send reply; we send the request back for now
                         mailbox_enqueue (&msg->reply_to, msg);
                     }
                     else
