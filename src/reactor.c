@@ -157,44 +157,13 @@ s_loop (void *udata)
             assert (errno == EINTR);
             continue;
         }
+        bool msg_flag = false;
         for (int i = 0; i < nfds; i++) {
             const uint32_t what = events [i].events;
             struct event_source *ev_src =
                 (struct event_source *) events [i].data.ptr;
-            if (ev_src->fd == self->ctrl_fd) {
-                printf ("eventfd event\n");
-                struct msg_t *msg =
-                    (struct msg_t *) atomic_ptr_swap (&self->lifo, NULL);
-                assert (msg);
-                uint64_t x;
-                const int rc = read (self->ctrl_fd, &x, sizeof x);
-                assert (rc == sizeof x);
-                //  Transform LIFO to FIFO
-                msg_t *prev = NULL;
-                while (msg->next) {
-                    msg_t *next = msg->next;
-                    msg->next = prev;
-                    prev = msg;
-                    msg = next;
-                }
-                msg->next = prev;
-                while (msg) {
-                    struct msg_t *next_msg = msg->next;
-                    if (msg->cmd == ZKERNEL_KILL) {
-                        msg_destroy (&msg);
-                        stop = 1;
-                    }
-                    else
-                    if (msg->cmd == ZKERNEL_REGISTER) {
-                        s_register (self, msg->fd, &msg->handler);
-                        //  Send reply; we send the request back for now
-                        mailbox_enqueue (&msg->reply_to, msg);
-                    }
-                    else
-                        msg_destroy (&msg);
-                    msg = next_msg;
-                }
-            }
+            if (ev_src->fd == self->ctrl_fd)
+                msg_flag = true;
             else
             if ((what & (EPOLLERR | EPOLLHUP)) != 0) {
                 io_handler_error (&ev_src->handler);
@@ -278,6 +247,39 @@ s_loop (void *udata)
             else
                 s_free_timer (timer);
             timer = s_next_timer (self);
+        }
+        if (msg_flag) {
+            struct msg_t *msg =
+                (struct msg_t *) atomic_ptr_swap (&self->lifo, NULL);
+            assert (msg);
+            uint64_t x;
+            const int rc = read (self->ctrl_fd, &x, sizeof x);
+            assert (rc == sizeof x);
+            //  Transform LIFO to FIFO
+            msg_t *prev = NULL;
+            while (msg->next) {
+                msg_t *next = msg->next;
+                msg->next = prev;
+                prev = msg;
+                msg = next;
+            }
+            msg->next = prev;
+            while (msg) {
+                struct msg_t *next_msg = msg->next;
+                if (msg->cmd == ZKERNEL_KILL) {
+                    msg_destroy (&msg);
+                    stop = 1;
+                }
+                else
+                if (msg->cmd == ZKERNEL_REGISTER) {
+                    s_register (self, msg->fd, &msg->handler);
+                    //  Send reply; we send the request back for now
+                    mailbox_enqueue (&msg->reply_to, msg);
+                }
+                else
+                    msg_destroy (&msg);
+                msg = next_msg;
+            }
         }
     }
 
