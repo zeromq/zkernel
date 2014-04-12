@@ -81,10 +81,7 @@ reactor_new ()
     *self = (reactor_t) {
         .poll_fd = poll_fd,
         .ctrl_fd = ctrl_fd,
-        .controler = {
-            .fd = ctrl_fd,
-            .event_mask = EPOLLIN
-        }
+        .controler = { .fd = ctrl_fd, .event_mask = EPOLLIN }
     };
     struct epoll_event ev = {
         .events = EPOLLIN,
@@ -132,7 +129,7 @@ reactor_mailbox (reactor_t *self)
     assert (self);
     return (mailbox_t) {
         .object = self,
-        .ftab = (struct mailbox_ftab) { .enqueue = s_send_msg }
+        .ftab = { .enqueue = s_send_msg }
     };
 }
 
@@ -153,7 +150,8 @@ s_loop (void *udata)
             next_timer == NULL
                 ? -1
                 : (next_timer->t < now? 0: next_timer->t - now);
-        const int nfds = epoll_wait (self->poll_fd, events, MAX_EVENTS, max_wait);
+        const int nfds = epoll_wait (
+            self->poll_fd, events, MAX_EVENTS, max_wait);
         now = clock_now ();
         if (nfds == -1) {
             assert (errno == EINTR);
@@ -201,8 +199,8 @@ s_loop (void *udata)
             if ((what & (EPOLLERR | EPOLLHUP)) != 0) {
                 io_handler_error (&ev_src->handler);
                 struct epoll_event ev;
-                const int rc =
-                    epoll_ctl (self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
+                const int rc = epoll_ctl (
+                    self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
                 assert (rc == 0);
                 ev_src->fd = -1;
             }
@@ -285,6 +283,7 @@ s_loop (void *udata)
 
     return NULL;
 }
+
 
 //  We should generate response
 //  There should be a way to release all event sources on

@@ -15,7 +15,7 @@ void
     tcp_session_destroy (tcp_session_t **self_p);
 
 struct io_handler
-tcp_session_io_handler (tcp_session_t *self);
+    tcp_session_io_handler (tcp_session_t *self);
 
 int
     tcp_session_fd (tcp_session_t *self);
