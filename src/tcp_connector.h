@@ -1,0 +1,29 @@
+//  TCP connector class
+
+#ifndef __TCP_CONNECTOR_H_INCLUDED__
+#define __TCP_CONNECTOR_H_INCLUDED__
+
+#include "mailbox.h"
+#include "io_handler.h"
+
+typedef struct tcp_connector tcp_connector_t;
+
+tcp_connector_t *
+    tcp_connector_new (mailbox_t *owner);
+
+void
+    tcp_connector_destroy (tcp_connector_t **self_p);
+
+int
+    tcp_connector_connect (tcp_connector_t *self, unsigned short port);
+
+bool
+    tcp_connector_is_completed (tcp_connector_t *self);
+
+int
+    tcp_connector_fd (tcp_connector_t *self);
+
+struct io_handler
+    tcp_connector_io_handler (tcp_connector_t *self);
+
+#endif
