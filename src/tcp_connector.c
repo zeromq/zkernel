@@ -17,7 +17,7 @@
 
 struct tcp_connector {
     int fd;
-    bool completed;
+    int err;
     mailbox_t *owner;
 };
 
@@ -36,7 +36,7 @@ tcp_connector_destroy (tcp_connector_t **self_p)
     assert (self_p);
     if (*self_p) {
         tcp_connector_t *self = *self_p;
-        if (self->fd != -1 && !self->completed) {
+        if (self->fd != -1 && self->err != 0) {
             const int rc = close (self->fd);
             assert (rc == 0);
         }
@@ -71,43 +71,25 @@ tcp_connector_connect (tcp_connector_t *self, unsigned short port)
         return -1;
     }
     assert (result);
-    //  Set the socket into non-blocking mode
+    //  Set non-blocking mode
     const int flags = fcntl (s, F_GETFL, 0);
     assert (flags != -1);
     int rc = fcntl (s, F_SETFL, flags | O_NONBLOCK);
     assert (rc == 0);
-    //  Initiate connection on the socket
+    //  Initiate TCP connection
     rc = connect (s, result->ai_addr, result->ai_addrlen);
+    if (rc == -1)
+        self->err = errno;
     freeaddrinfo (result);
-    if (rc == -1 && errno != EINPROGRESS) {
-        perror ("connect");
-        close (s);
-        return -1;
-    }
     self->fd = s;
-    if (rc == 0)
-        self->completed = true;
-    return 0;
+    return rc;
 }
 
-bool
-tcp_connector_is_completed (tcp_connector_t *self)
+int
+tcp_connector_errno (tcp_connector_t *self)
 {
     assert (self);
-    if (!self->completed) {
-        int err = 0;
-        socklen_t len = sizeof err;
-        const int rc = getsockopt (
-           self->fd, SOL_SOCKET, SO_ERROR, &err, &len);
-        assert (rc == 0);
-        if (err == 0)
-            printf ("connected\n");
-        else
-            printf ("connect error: %d\n", err);
-        if (err != EINPROGRESS)
-            self->completed = true;
-    }
-    return self->completed;
+    return self->err;
 }
 
 int
@@ -120,9 +102,19 @@ tcp_connector_fd (tcp_connector_t *self)
 static int
 io_event (void *self_, uint32_t flags, uint32_t *timer_interval)
 {
-    printf ("tcp_connector: I/O ready (%x)\n", flags);
-    tcp_connector_is_completed ((tcp_connector_t *) self_);
-    return 0;
+    tcp_connector_t *self = (tcp_connector_t *) self_;
+    assert (self);
+    socklen_t len = sizeof self->err;
+    const int rc = getsockopt (
+       self->fd, SOL_SOCKET, SO_ERROR, &self->err, &len);
+    assert (rc == 0);
+    if (self->err == 0)
+        return 0;
+    else
+    if (self->err != EINPROGRESS)
+        return 0;
+    else
+        return 3;
 }
 
 static void

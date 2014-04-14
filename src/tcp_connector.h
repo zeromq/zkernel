@@ -17,8 +17,8 @@ void
 int
     tcp_connector_connect (tcp_connector_t *self, unsigned short port);
 
-bool
-    tcp_connector_is_completed (tcp_connector_t *self);
+int
+    tcp_connector_errno (tcp_connector_t *self);
 
 int
     tcp_connector_fd (tcp_connector_t *self);
