@@ -10,6 +10,7 @@
 
 #include "reactor.h"
 #include "tcp_listener.h"
+#include "tcp_connector.h"
 #include "tcp_session.h"
 #include "mailbox.h"
 #include "socket.h"
@@ -137,6 +138,44 @@ fail:
     if (listener)
         tcp_listener_destroy (&listener);
     return -1;
+}
+
+int
+socket_connect (socket_t *self, unsigned short port)
+{
+    assert (self);
+
+    tcp_connector_t *connector =
+        tcp_connector_new (&self->mailbox_ifc);
+    if (!connector)
+        return -1;
+    const int rc = tcp_connector_connect (connector, port);
+    if (rc == 0 || tcp_connector_errno (connector) != EINPROGRESS) {
+        tcp_connector_destroy (&connector);
+        return rc;
+    }
+
+    bool completion_flag = false;
+    msg_t *msg = msg_new (ZKERNEL_REGISTER);
+    if (!msg) {
+        tcp_connector_destroy (&connector);
+        return -1;
+    }
+    msg->reply_to = self->mailbox_ifc;
+    msg->fd = tcp_connector_fd (connector);
+    msg->handler = tcp_connector_io_handler (connector);
+    msg->ptr = &completion_flag;
+
+    mailbox_enqueue (&self->reactor, msg);
+    while (!completion_flag) {
+        msg_t *msg = s_wait_for_msgs (self);
+        while (msg) {
+            msg_t *next = msg->next;
+            process_msg (self, &msg);
+            msg = next;
+        }
+    }
+    return 0;
 }
 
 static void
