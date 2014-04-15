@@ -202,9 +202,9 @@ s_loop (void *udata)
 #define ZKERNEL_POLLOUT 2
                 uint32_t event_mask = 0;
                 if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
-                    event_mask |= EPOLLIN | EPOLLONESHOT | EPOLLET;
+                    event_mask |= EPOLLIN | EPOLLONESHOT;
                 if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
-                    event_mask |= EPOLLOUT | EPOLLONESHOT | EPOLLET;
+                    event_mask |= EPOLLOUT | EPOLLONESHOT;
                 if (ev_src->event_mask != event_mask) {
                     struct epoll_event ev = {
                         .events = event_mask,
@@ -226,9 +226,9 @@ s_loop (void *udata)
                 &ev_src->handler, 0, &timer_interval);
             uint32_t event_mask = 0;
             if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
-                event_mask |= EPOLLIN | EPOLLONESHOT | EPOLLET;
+                event_mask |= EPOLLIN | EPOLLONESHOT;
             if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
-                event_mask |= EPOLLOUT | EPOLLONESHOT | EPOLLET;
+                event_mask |= EPOLLOUT | EPOLLONESHOT;
             if (ev_src->event_mask != event_mask) {
                 struct epoll_event ev = {
                     .events = event_mask,
@@ -308,9 +308,9 @@ s_register (reactor_t *self, int fd, io_handler_t *handler)
         handler, ZKERNEL_INPUT_READY | ZKERNEL_OUTPUT_READY, &timer_interval);
     uint32_t event_mask = 0;
     if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
-        event_mask |= EPOLLIN | EPOLLONESHOT | EPOLLET;
+        event_mask |= EPOLLIN | EPOLLONESHOT;
     if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
-        event_mask |= EPOLLOUT | EPOLLONESHOT | EPOLLET;
+        event_mask |= EPOLLOUT | EPOLLONESHOT;
     struct event_source *event_source = malloc (sizeof *event_source);
     if (!event_source)
         return -1;
