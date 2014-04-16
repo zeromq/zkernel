@@ -103,7 +103,7 @@ io_init (void *self_, int *fd, uint32_t *timer_interval)
 }
 
 static int
-io_event (void *self_, uint32_t flags, uint32_t *timer_interval)
+io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
 {
     tcp_connector_t *self = (tcp_connector_t *) self_;
     assert (self);

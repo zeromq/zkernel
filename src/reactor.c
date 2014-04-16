@@ -184,9 +184,10 @@ s_loop (void *udata)
                     flags |= ZKERNEL_OUTPUT_READY;
                     ev_src->event_mask = 0;
                 }
+                int fd = ev_src->fd;
                 uint32_t timer_interval = 0;
                 const int rc = io_handler_event (
-                    &ev_src->handler, flags, &timer_interval);
+                    &ev_src->handler, flags, &fd, &timer_interval);
                 if (timer_interval > 0) {
                     struct timer *timer = NULL;
                     if (ev_src->timer != 0)
@@ -204,6 +205,24 @@ s_loop (void *udata)
                     event_mask |= EPOLLIN | EPOLLONESHOT;
                 if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
                     event_mask |= EPOLLOUT | EPOLLONESHOT;
+                if (fd != ev_src->fd) {
+                    struct epoll_event ev = {};
+                    const int rc = epoll_ctl (
+                        self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
+                    assert (rc == 0 || errno == ENOENT);
+                    if (fd != -1) {
+                        struct epoll_event ev = {
+                            .events = event_mask,
+                            .data = ev_src
+                        };
+                        const int rc = epoll_ctl (
+                            self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
+                        assert (rc == 0);
+                    }
+                    ev_src->event_mask = event_mask;
+                    ev_src->fd = fd;
+                }
+                else
                 if (ev_src->event_mask != event_mask) {
                     struct epoll_event ev = {
                         .events = event_mask,
@@ -220,14 +239,33 @@ s_loop (void *udata)
         while (timer && timer->t <= now) {
             struct event_source *ev_src = timer->ev_src;
             assert (ev_src);
+            int fd = ev_src->fd;
             uint32_t timer_interval = 0;
             const int rc = io_handler_event (
-                &ev_src->handler, 0, &timer_interval);
+                &ev_src->handler, 0, &fd, &timer_interval);
             uint32_t event_mask = 0;
             if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
                 event_mask |= EPOLLIN | EPOLLONESHOT;
             if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
                 event_mask |= EPOLLOUT | EPOLLONESHOT;
+            if (fd != ev_src->fd) {
+                struct epoll_event ev = {};
+                const int rc = epoll_ctl (
+                    self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
+                assert (rc == 0 || errno == ENOENT);
+                if (fd != -1) {
+                    struct epoll_event ev = {
+                        .events = event_mask,
+                        .data = ev_src
+                    };
+                    const int rc = epoll_ctl (
+                        self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
+                    assert (rc == 0);
+                }
+                ev_src->event_mask = event_mask;
+                ev_src->fd = fd;
+            }
+            else
             if (ev_src->event_mask != event_mask) {
                 struct epoll_event ev = {
                     .events = event_mask,

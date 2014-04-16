@@ -19,11 +19,6 @@ struct tcp_listener {
     mailbox_t *owner;
 };
 
-static int
-    io_event (void *self_, uint32_t flags, uint32_t *timer_interval);
-
-static void
-    io_error (void *self_);
 
 tcp_listener_t *
 tcp_listener_new (mailbox_t *owner)
@@ -100,7 +95,7 @@ io_init (void *self_, int *fd, uint32_t *timer_interval)
 }
 
 static int
-io_event (void *self_, uint32_t flags, uint32_t *timer_interval)
+io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
 {
     tcp_listener_t *self = (tcp_listener_t *) self_;
     assert (self);
