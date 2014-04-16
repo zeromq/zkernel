@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "mailbox.h"
@@ -82,22 +83,20 @@ tcp_listener_bind (tcp_listener_t *self, unsigned short port)
     return 0;
 }
 
-int
-tcp_listener_fd (tcp_listener_t *self)
+static int
+io_init (void *self_, int *fd, uint32_t *timer_interval)
 {
+    tcp_listener_t *self = (tcp_listener_t *) self_;
     assert (self);
-    return self->fd;
-}
 
-struct io_handler
-tcp_listener_io_handler (tcp_listener_t *self)
-{
-    static struct io_handler_ops ops = {
-        .event = io_event,
-        .error = io_error
-    };
-    assert (self);
-    return (struct io_handler) { .object = self, .ops = &ops };
+    //  Set non-blocking mode
+    const int flags = fcntl (self->fd, F_GETFL, 0);
+    assert (flags != -1);
+    int rc = fcntl (self->fd, F_SETFL, flags | O_NONBLOCK);
+    assert (rc == 0);
+
+    *fd = self->fd;
+    return 3;
 }
 
 static int
@@ -135,4 +134,16 @@ io_error (void *self_)
     tcp_listener_t *self = (tcp_listener_t *) self_;
     assert (self);
     printf ("I/O error\n");
+}
+
+struct io_handler
+tcp_listener_io_handler (tcp_listener_t *self)
+{
+    static struct io_handler_ops ops = {
+        .init  = io_init,
+        .event = io_event,
+        .error = io_error
+    };
+    assert (self);
+    return (struct io_handler) { .object = self, .ops = &ops };
 }

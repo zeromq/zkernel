@@ -10,7 +10,6 @@ struct msg_t {
     int cmd;
     mailbox_ifc_t reply_to;
     struct msg_t *next;
-    int fd;
     io_handler_t handler;
     void *ptr;
 };

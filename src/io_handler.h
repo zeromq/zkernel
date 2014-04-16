@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 struct io_handler_ops {
+    int (*init) (void *handler, int *fd, uint32_t *timer_interval);
     int (*event) (void *handler, uint32_t flags, uint32_t *timer_interval);
     void (*error) (void *handler);
 };
@@ -21,6 +22,12 @@ inline void
 io_handler_error (io_handler_t *self)
 {
     return self->ops->error (self->object);
+}
+
+inline int
+io_handler_init (io_handler_t *self, int *fd, uint32_t *timer_interval)
+{
+    return self->ops->init (self->object, fd, timer_interval);
 }
 
 inline int

@@ -92,11 +92,14 @@ tcp_connector_errno (tcp_connector_t *self)
     return self->err;
 }
 
-int
-tcp_connector_fd (tcp_connector_t *self)
+static int
+io_init (void *self_, int *fd, uint32_t *timer_interval)
 {
+    tcp_connector_t *self = (tcp_connector_t *) self_;
     assert (self);
-    return self->fd;
+
+    *fd = self->fd;
+    return 3;
 }
 
 static int
@@ -127,6 +130,7 @@ struct io_handler
 tcp_connector_io_handler (tcp_connector_t *self)
 {
     static struct io_handler_ops ops = {
+        .init  = io_init,
         .event = io_event,
         .error = io_error
     };

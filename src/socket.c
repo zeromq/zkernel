@@ -88,7 +88,6 @@ process_msg (socket_t *self, msg_t **msg_p)
         session = (tcp_session_t *) msg->ptr;
         msg->cmd = ZKERNEL_REGISTER;
         msg->reply_to = self->mailbox_ifc;
-        msg->fd = tcp_session_fd (session);
         msg->handler = tcp_session_io_handler (session);
         mailbox_enqueue (&self->reactor, msg);
         break;
@@ -118,7 +117,6 @@ socket_bind (socket_t *self, unsigned short port)
     if (!msg)
         goto fail;
     msg->reply_to = self->mailbox_ifc;
-    msg->fd = tcp_listener_fd (listener);
     msg->handler = tcp_listener_io_handler (listener);
     msg->ptr = &completion_flag;
 
@@ -162,7 +160,6 @@ socket_connect (socket_t *self, unsigned short port)
         return -1;
     }
     msg->reply_to = self->mailbox_ifc;
-    msg->fd = tcp_connector_fd (connector);
     msg->handler = tcp_connector_io_handler (connector);
     msg->ptr = &completion_flag;
 

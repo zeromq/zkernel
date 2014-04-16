@@ -17,9 +17,6 @@ void
 int
     tcp_listener_bind (tcp_listener_t *self, unsigned short port);
 
-int
-    tcp_listener_fd (tcp_listener_t *self);
-
 struct io_handler
     tcp_listener_io_handler (tcp_listener_t *self);
 

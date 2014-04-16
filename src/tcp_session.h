@@ -17,7 +17,4 @@ void
 struct io_handler
     tcp_session_io_handler (tcp_session_t *self);
 
-int
-    tcp_session_fd (tcp_session_t *self);
-
 #endif

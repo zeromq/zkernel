@@ -20,9 +20,6 @@ int
 int
     tcp_connector_errno (tcp_connector_t *self);
 
-int
-    tcp_connector_fd (tcp_connector_t *self);
-
 struct io_handler
     tcp_connector_io_handler (tcp_connector_t *self);
 

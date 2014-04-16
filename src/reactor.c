@@ -9,7 +9,6 @@
 #include <sys/epoll.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #include "mailbox.h"
 #include "atomic.h"
@@ -46,7 +45,7 @@ static int
     s_send_msg (void *self_, msg_t *msg);
 
 static int
-    s_register (reactor_t *self, int fd, io_handler_t *handler);
+    s_register (reactor_t *self, io_handler_t *handler);
 
 
 static struct timer *
@@ -272,7 +271,7 @@ s_loop (void *udata)
                 }
                 else
                 if (msg->cmd == ZKERNEL_REGISTER) {
-                    s_register (self, msg->fd, &msg->handler);
+                    s_register (self, &msg->handler);
                     //  Send reply; we send the request back for now
                     mailbox_enqueue (&msg->reply_to, msg);
                 }
@@ -287,51 +286,37 @@ s_loop (void *udata)
 }
 
 
-//  We should generate response
-//  There should be a way to release all event sources on
-//  reactor termination
 static int
-s_register (reactor_t *self, int fd, io_handler_t *handler)
+s_register (reactor_t *self, io_handler_t *handler)
 {
     assert (self);
-    if (fd == -1)
-        return -1;
 
-    //  Set the socket into non-blocking mode
-    const int flags = fcntl (fd, F_GETFL, 0);
-    assert (flags != -1);
-    int rc = fcntl (fd, F_SETFL, flags | O_NONBLOCK);
-    assert (rc == 0);
+    struct event_source *ev_src = malloc (sizeof *ev_src);
+    if (!ev_src)
+        return -1;
+    *ev_src = (struct event_source) { .fd = -1, .handler = *handler };
 
     uint32_t timer_interval = 0;
-    rc = io_handler_event (
-        handler, ZKERNEL_INPUT_READY | ZKERNEL_OUTPUT_READY, &timer_interval);
-    uint32_t event_mask = 0;
-    if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
-        event_mask |= EPOLLIN | EPOLLONESHOT;
-    if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
-        event_mask |= EPOLLOUT | EPOLLONESHOT;
-    struct event_source *event_source = malloc (sizeof *event_source);
-    if (!event_source)
-        return -1;
-    *event_source = (struct event_source) {
-        .fd = fd,
-        .event_mask = event_mask,
-        .handler = *handler
-    };
-    //  is epollet ok (what happens if data are already ready)?
-    struct epoll_event ev = {
-        .events = event_source->event_mask,
-        .data = event_source
-    };
-    rc = epoll_ctl (self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
-    assert (rc == 0);
+    int rc = io_handler_init (handler, &ev_src->fd, &timer_interval);
+    if (ev_src->fd != -1) {
+        if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
+            ev_src->event_mask |= EPOLLIN | EPOLLONESHOT;
+        if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
+            ev_src->event_mask |= EPOLLOUT | EPOLLONESHOT;
+
+        struct epoll_event ev = {
+            .events = ev_src->event_mask,
+            .data = ev_src
+        };
+        rc = epoll_ctl (self->poll_fd, EPOLL_CTL_ADD, ev_src->fd, &ev);
+        assert (rc == 0);
+    }
     if (timer_interval > 0) {
         struct timer *timer = s_alloc_timer (self);
         assert (timer);
         timer->t = clock_now () + timer_interval;
-        timer->ev_src = event_source;
-        event_source->timer = timer->t;
+        timer->ev_src = ev_src;
+        ev_src->timer = timer->t;
     }
 
     return 0;

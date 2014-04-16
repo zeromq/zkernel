@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -34,6 +35,22 @@ tcp_session_destroy (tcp_session_t **self_p)
         free (self);
         *self_p = NULL;
     }
+}
+
+static int
+io_init (void *self_, int *fd, uint32_t *timer_interval)
+{
+    tcp_session_t *self = (tcp_session_t *) self_;
+    assert (self);
+
+    //  Set non-blocking mode
+    const int flags = fcntl (self->fd, F_GETFL, 0);
+    assert (flags != -1);
+    int rc = fcntl (self->fd, F_SETFL, flags | O_NONBLOCK);
+    assert (rc == 0);
+
+    *fd = self->fd;
+    return 3;
 }
 
 static int
@@ -78,15 +95,9 @@ struct io_handler
 tcp_session_io_handler (tcp_session_t *self)
 {
     static struct io_handler_ops ops = {
+        .init  = io_init,
         .event = io_event,
         .error = io_error
     };
     return (struct io_handler) { .object = self, .ops = &ops };
-}
-
-int
-tcp_session_fd (tcp_session_t *self)
-{
-    assert (self);
-    return self->fd;
 }
