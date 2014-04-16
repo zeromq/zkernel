@@ -179,11 +179,11 @@ s_loop (void *udata)
 #define ZKERNEL_OUTPUT_READY    0x02
                 if ((what & EPOLLIN) == EPOLLIN) {
                     flags |= ZKERNEL_INPUT_READY;
-                    ev_src->event_mask &= ~EPOLLIN;
+                    ev_src->event_mask = 0;
                 }
                 if ((what & EPOLLOUT) == EPOLLOUT) {
                     flags |= ZKERNEL_OUTPUT_READY;
-                    ev_src->event_mask &= ~EPOLLOUT;
+                    ev_src->event_mask = 0;
                 }
                 uint32_t timer_interval = 0;
                 const int rc = io_handler_event (
