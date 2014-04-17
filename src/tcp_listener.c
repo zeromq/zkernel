@@ -13,6 +13,7 @@
 #include "msg.h"
 #include <arpa/inet.h>
 #include <errno.h>
+#include "zkernel.h"
 
 struct tcp_listener {
     int fd;
@@ -100,7 +101,7 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     tcp_listener_t *self = (tcp_listener_t *) self_;
     assert (self);
 
-    if ((flags & 0x04) == 0x04) {
+    if ((flags & ZKERNEL_IO_ERROR) == ZKERNEL_IO_ERROR) {
         printf ("tcp_listener: I/O error\n");
         *fd = -1;
         return 0;

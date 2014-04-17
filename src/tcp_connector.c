@@ -14,6 +14,7 @@
 #include <netdb.h>
 #include "mailbox.h"
 #include "tcp_connector.h"
+#include "zkernel.h"
 
 struct tcp_connector {
     struct addrinfo *addrinfo;

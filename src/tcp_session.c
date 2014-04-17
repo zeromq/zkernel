@@ -9,6 +9,7 @@
 
 #include "tcp_session.h"
 #include "msg.h"
+#include "zkernel.h"
 
 struct tcp_session {
     int fd;
@@ -59,13 +60,13 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
 
-    if ((flags & 0x04) == 0x04) {
+    if ((flags & ZKERNEL_IO_ERROR) == ZKERNEL_IO_ERROR) {
         printf ("tcp_session: I/O error\n");
         *fd = -1;
         return 0;
     }
 
-    if ((flags & 1) == 1) {
+    if ((flags & ZKERNEL_INPUT_READY) == ZKERNEL_INPUT_READY) {
         char buf [80];
         int rc = read (self->fd, buf, sizeof buf);
         while (rc > 0) {
