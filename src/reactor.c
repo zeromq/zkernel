@@ -16,6 +16,7 @@
 #include "io_handler.h"
 #include "msg.h"
 #include "clock.h"
+#include "zkernel.h"
 
 struct event_source {
     int fd;
@@ -165,9 +166,6 @@ s_loop (void *udata)
                 msg_flag = true;
             else {
                 uint32_t flags = 0;
-#define ZKERNEL_INPUT_READY     0x01
-#define ZKERNEL_OUTPUT_READY    0x02
-#define ZKERNEL_IO_ERROR        0x04
                 if ((what & EPOLLIN) == EPOLLIN) {
                     flags |= ZKERNEL_INPUT_READY;
                     ev_src->event_mask = 0;
