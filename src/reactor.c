@@ -241,8 +241,8 @@ s_loop (void *udata)
             assert (ev_src);
             int fd = ev_src->fd;
             uint32_t timer_interval = 0;
-            const int rc = io_handler_event (
-                &ev_src->handler, 0, &fd, &timer_interval);
+            const int rc = io_handler_timeout (
+                &ev_src->handler, &fd, &timer_interval);
             uint32_t event_mask = 0;
             if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
                 event_mask |= EPOLLIN | EPOLLONESHOT;

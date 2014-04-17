@@ -8,6 +8,7 @@
 struct io_handler_ops {
     int (*init) (void *handler, int *fd, uint32_t *timer_interval);
     int (*event) (void *handler, uint32_t flags, int *fd, uint32_t *timer_interval);
+    int (*timeout) (void *handler, int *fd, uint32_t *timer_interval);
     void (*error) (void *handler);
 };
 
@@ -34,6 +35,12 @@ inline int
 io_handler_event (io_handler_t *self, uint32_t flags, int *fd, uint32_t *timer_interval)
 {
     return self->ops->event (self->object, flags, fd, timer_interval);
+}
+
+inline int
+io_handler_timeout (io_handler_t *self, int *fd, uint32_t *timer_interval)
+{
+    return self->ops->timeout (self->object, fd, timer_interval);
 }
 
 #endif
