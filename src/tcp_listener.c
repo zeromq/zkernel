@@ -99,6 +99,13 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
 {
     tcp_listener_t *self = (tcp_listener_t *) self_;
     assert (self);
+
+    if ((flags & 0x04) == 0x04) {
+        printf ("tcp_listener: I/O error\n");
+        *fd = -1;
+        return 0;
+    }
+
     while (1) {
         const int rc = accept (self->fd, NULL, NULL);
         if (rc == -1) {
@@ -123,21 +130,12 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     return 1 | 2;
 }
 
-static void
-io_error (void *self_)
-{
-    tcp_listener_t *self = (tcp_listener_t *) self_;
-    assert (self);
-    printf ("I/O error\n");
-}
-
 struct io_handler
 tcp_listener_io_handler (tcp_listener_t *self)
 {
     static struct io_handler_ops ops = {
         .init  = io_init,
-        .event = io_event,
-        .error = io_error
+        .event = io_event
     };
     assert (self);
     return (struct io_handler) { .object = self, .ops = &ops };

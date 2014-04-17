@@ -120,19 +120,12 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
         return 3;
 }
 
-static void
-io_error (void *self_)
-{
-    printf ("tcp_connector: I/O error\n");
-}
-
 struct io_handler
 tcp_connector_io_handler (tcp_connector_t *self)
 {
     static struct io_handler_ops ops = {
         .init  = io_init,
-        .event = io_event,
-        .error = io_error
+        .event = io_event
     };
     assert (self);
     return (struct io_handler) { .object = self, .ops = &ops };

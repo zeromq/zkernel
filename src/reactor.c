@@ -163,25 +163,21 @@ s_loop (void *udata)
                 (struct event_source *) events [i].data.ptr;
             if (ev_src->fd == self->ctrl_fd)
                 msg_flag = true;
-            else
-            if ((what & (EPOLLERR | EPOLLHUP)) != 0) {
-                io_handler_error (&ev_src->handler);
-                struct epoll_event ev;
-                const int rc = epoll_ctl (
-                    self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
-                assert (rc == 0);
-                ev_src->fd = -1;
-            }
             else {
                 uint32_t flags = 0;
 #define ZKERNEL_INPUT_READY     0x01
 #define ZKERNEL_OUTPUT_READY    0x02
+#define ZKERNEL_IO_ERROR        0x04
                 if ((what & EPOLLIN) == EPOLLIN) {
                     flags |= ZKERNEL_INPUT_READY;
                     ev_src->event_mask = 0;
                 }
                 if ((what & EPOLLOUT) == EPOLLOUT) {
                     flags |= ZKERNEL_OUTPUT_READY;
+                    ev_src->event_mask = 0;
+                }
+                if ((what & (EPOLLERR | EPOLLHUP)) != 0) {
+                    flags |= ZKERNEL_IO_ERROR;
                     ev_src->event_mask = 0;
                 }
                 int fd = ev_src->fd;

@@ -9,7 +9,6 @@ struct io_handler_ops {
     int (*init) (void *handler, int *fd, uint32_t *timer_interval);
     int (*event) (void *handler, uint32_t flags, int *fd, uint32_t *timer_interval);
     int (*timeout) (void *handler, int *fd, uint32_t *timer_interval);
-    void (*error) (void *handler);
 };
 
 struct io_handler {
@@ -18,12 +17,6 @@ struct io_handler {
 };
 
 typedef struct io_handler io_handler_t;
-
-inline void
-io_handler_error (io_handler_t *self)
-{
-    return self->ops->error (self->object);
-}
 
 inline int
 io_handler_init (io_handler_t *self, int *fd, uint32_t *timer_interval)

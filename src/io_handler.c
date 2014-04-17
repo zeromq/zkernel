@@ -1,8 +1,5 @@
 #include "io_handler.h"
 
-extern inline void
-io_handler_error (io_handler_t *self);
-
 extern inline int
 io_handler_init (io_handler_t *self, int *fd, uint32_t *timer_interval);
 
