@@ -33,7 +33,7 @@ struct reactor {
     int poll_fd;
     int ctrl_fd;
     struct event_source controler;
-    void *lifo;
+    void *mbox;
     pthread_t thread_handle;
     struct timer timers [8];
 };
@@ -285,7 +285,7 @@ s_loop (void *udata)
         }
         if (msg_flag) {
             struct msg_t *msg =
-                (struct msg_t *) atomic_ptr_swap (&self->lifo, NULL);
+                (struct msg_t *) atomic_ptr_swap (&self->mbox, NULL);
             assert (msg);
             uint64_t x;
             const int rc = read (self->ctrl_fd, &x, sizeof x);
@@ -362,13 +362,13 @@ static int
 s_send_msg (void *self_, struct msg_t *msg)
 {
     reactor_t *self = (reactor_t *) self_;
-    void *tail = atomic_ptr_get (&self->lifo);
+    void *tail = atomic_ptr_get (&self->mbox);
     atomic_ptr_set ((void **) &msg->next, tail);
-    void *prev = atomic_ptr_cas (&self->lifo, tail, msg);
+    void *prev = atomic_ptr_cas (&self->mbox, tail, msg);
     while (prev != tail) {
         tail = prev;
         atomic_ptr_set ((void **) &msg->next, tail);
-        prev = atomic_ptr_cas (&self->lifo, tail, msg);
+        prev = atomic_ptr_cas (&self->mbox, tail, msg);
     }
     //  Wake up I/O thread if necessary
     if (!prev) {
