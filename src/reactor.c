@@ -249,10 +249,12 @@ s_loop (void *udata)
             if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
                 event_mask |= EPOLLOUT | EPOLLONESHOT;
             if (fd != ev_src->fd) {
-                struct epoll_event ev = {};
-                const int rc = epoll_ctl (
-                    self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
-                assert (rc == 0 || errno == ENOENT);
+                if (ev_src->fd != -1) {
+                    struct epoll_event ev = {};
+                    const int rc = epoll_ctl (
+                        self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
+                    assert (rc == 0 || errno == EBADF || errno == ENOENT);
+                }
                 if (fd != -1) {
                     struct epoll_event ev = {
                         .events = event_mask,
