@@ -148,7 +148,13 @@ socket_connect (socket_t *self, unsigned short port)
     if (!connector)
         return -1;
     const int rc = tcp_connector_connect (connector, port);
-    if (rc == 0 || tcp_connector_errno (connector) != EINPROGRESS) {
+    if (rc != -1) {
+        close (rc); //  close returned descriptor for now
+        tcp_connector_destroy (&connector);
+        return 0;
+    }
+    else
+    if (tcp_connector_errno (connector) != EINPROGRESS) {
         tcp_connector_destroy (&connector);
         return rc;
     }
