@@ -11,6 +11,7 @@ struct msg_t {
     mailbox_ifc_t reply_to;
     struct msg_t *next;
     io_handler_t handler;
+    void *handler_id;
     void *ptr;
 };
 

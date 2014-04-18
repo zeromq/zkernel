@@ -45,9 +45,11 @@ static void *
 static int
     s_send_msg (void *self_, msg_t *msg);
 
-static int
+static struct event_source *
     s_register (reactor_t *self, io_handler_t *handler);
 
+static void
+    s_remove (reactor_t *self, struct event_source *ev_src);
 
 static struct timer *
     s_alloc_timer (reactor_t *self);
@@ -305,8 +307,17 @@ s_loop (void *udata)
                 }
                 else
                 if (msg->cmd == ZKERNEL_REGISTER) {
-                    s_register (self, &msg->handler);
-                    //  Send reply; we send the request back for now
+                    struct event_source *ev_src =
+                        s_register (self, &msg->handler);
+                    msg->handler_id = ev_src;
+                    mailbox_enqueue (&msg->reply_to, msg);
+                }
+                else
+                if (msg->cmd == ZKERNEL_REMOVE) {
+                    struct event_source *ev_src =
+                        (struct event_source *) msg->ptr;
+                    assert (ev_src);
+                    s_remove (self, ev_src);
                     mailbox_enqueue (&msg->reply_to, msg);
                 }
                 else
@@ -320,14 +331,14 @@ s_loop (void *udata)
 }
 
 
-static int
+static struct event_source *
 s_register (reactor_t *self, io_handler_t *handler)
 {
     assert (self);
 
     struct event_source *ev_src = malloc (sizeof *ev_src);
     if (!ev_src)
-        return -1;
+        return NULL;
     *ev_src = (struct event_source) { .fd = -1, .handler = *handler };
 
     uint32_t timer_interval = 0;
@@ -353,7 +364,27 @@ s_register (reactor_t *self, io_handler_t *handler)
         ev_src->timer = timer->t;
     }
 
-    return 0;
+    return ev_src;
+}
+
+static void
+s_remove (reactor_t *self, struct event_source *ev_src)
+{
+    assert (self);
+    assert (ev_src);
+
+    if (ev_src->fd != -1) {
+        struct epoll_event ev;
+        const int rc = epoll_ctl (
+            self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
+        assert (rc == 0);
+    }
+    if (ev_src->timer > 0) {
+        struct timer *timer = s_find_timer (self, ev_src);
+        assert (timer);
+        s_free_timer (timer);
+    }
+    free (ev_src);
 }
 
 static int

@@ -80,8 +80,6 @@ process_msg (socket_t *self, msg_t **msg_p)
 
     switch (msg->cmd) {
     case ZKERNEL_REGISTER:
-        if (msg->ptr)
-            *(bool *) msg->ptr = true;
         msg_destroy (&msg);
         break;
     case ZKERNEL_NEW_SESSION:
@@ -106,8 +104,6 @@ process_msg (socket_t *self, msg_t **msg_p)
 int
 socket_bind (socket_t *self, unsigned short port)
 {
-    bool completion_flag = false;
-
     tcp_listener_t *listener = tcp_listener_new (&self->mailbox_ifc);
     if (!listener)
         goto fail;
@@ -119,18 +115,7 @@ socket_bind (socket_t *self, unsigned short port)
         goto fail;
     msg->reply_to = self->mailbox_ifc;
     msg->handler = tcp_listener_io_handler (listener);
-    msg->ptr = &completion_flag;
-
     mailbox_enqueue (&self->reactor, msg);
-    while (!completion_flag) {
-        msg_t *msg = s_wait_for_msgs (self);
-        while (msg) {
-            msg_t *next = msg->next;
-            process_msg (self, &msg);
-            msg = next;
-        }
-    }
-
     return 0;
 
 fail:
@@ -160,7 +145,6 @@ socket_connect (socket_t *self, unsigned short port)
         return rc;
     }
 
-    bool completion_flag = false;
     msg_t *msg = msg_new (ZKERNEL_REGISTER);
     if (!msg) {
         tcp_connector_destroy (&connector);
@@ -168,17 +152,7 @@ socket_connect (socket_t *self, unsigned short port)
     }
     msg->reply_to = self->mailbox_ifc;
     msg->handler = tcp_connector_io_handler (connector);
-    msg->ptr = &completion_flag;
-
     mailbox_enqueue (&self->reactor, msg);
-    while (!completion_flag) {
-        msg_t *msg = s_wait_for_msgs (self);
-        while (msg) {
-            msg_t *next = msg->next;
-            process_msg (self, &msg);
-            msg = next;
-        }
-    }
     return 0;
 }
 
