@@ -120,7 +120,7 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             close (rc);
             continue;
         }
-        msg_t *msg = msg_new (ZKERNEL_EVENT_NEW_SESSION);
+        msg_t *msg = msg_new (ZKERNEL_NEW_SESSION);
         if (!msg) {
             tcp_session_destroy (&session);
             continue;

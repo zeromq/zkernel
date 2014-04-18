@@ -5,12 +5,6 @@
 
 typedef struct mailbox mailbox_t;
 
-#define ZKERNEL_KILL        1
-#define ZKERNEL_REGISTER    2
-
-#define ZKERNEL_EVENT_NEW_SESSION   3
-#define ZKERNEL_SESSION_CLOSED      4
-
 #include "io_handler.h"
 
 struct msg_t;

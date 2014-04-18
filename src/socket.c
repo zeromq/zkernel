@@ -16,6 +16,7 @@
 #include "socket.h"
 #include "atomic.h"
 #include "msg.h"
+#include "zkernel.h"
 
 struct socket {
     int ctrl_fd;
@@ -83,7 +84,7 @@ process_msg (socket_t *self, msg_t **msg_p)
             *(bool *) msg->ptr = true;
         msg_destroy (&msg);
         break;
-    case ZKERNEL_EVENT_NEW_SESSION:
+    case ZKERNEL_NEW_SESSION:
         printf ("new session: %p\n", msg->ptr);
         session = (tcp_session_t *) msg->ptr;
         msg->cmd = ZKERNEL_REGISTER;
