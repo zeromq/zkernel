@@ -315,7 +315,7 @@ s_loop (void *udata)
                 else
                 if (msg->cmd == ZKERNEL_REMOVE) {
                     struct event_source *ev_src =
-                        (struct event_source *) msg->ptr;
+                        (struct event_source *) msg->handler_id;
                     assert (ev_src);
                     s_remove (self, ev_src);
                     mailbox_enqueue (&msg->reply_to, msg);

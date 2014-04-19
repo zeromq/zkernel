@@ -16,12 +16,18 @@
 #include "socket.h"
 #include "atomic.h"
 #include "msg.h"
+#include "set.h"
 #include "zkernel.h"
+
+struct event_handler {
+    void *handler_id;
+};
 
 struct socket {
     int ctrl_fd;
     struct mailbox reactor;
     void *mbox;
+    zset_t *event_handlers;
     struct mailbox mailbox_ifc;
 };
 
@@ -30,6 +36,9 @@ static int
 
 static msg_t *
     s_wait_for_msgs (socket_t *self);
+
+static void
+    process_mbox (socket_t *self, msg_t *msg);
 
 socket_t *
 socket_new (reactor_t *reactor)
@@ -43,9 +52,16 @@ socket_new (reactor_t *reactor)
         free (self);
         return NULL;
     }
+    zset_t *event_handlers = zset_new ();
+    if (!event_handlers) {
+        close (ctrl_fd);
+        free (self);
+        return NULL;
+    }
     *self = (socket_t) {
         .ctrl_fd = ctrl_fd,
         .reactor = reactor_mailbox (reactor),
+        .event_handlers = event_handlers,
         .mailbox_ifc = {
             .object = self,
             .ftab = { .enqueue = s_enqueue_msg }
@@ -60,8 +76,23 @@ socket_destroy (socket_t **self_p)
     assert (self_p);
     if (*self_p) {
         socket_t *self = *self_p;
+        struct event_handler *ev_handler =
+            (struct event_handler *) zset_first (self->event_handlers);
+        while (ev_handler) {
+            while (ev_handler->handler_id == NULL)
+                process_mbox (self, s_wait_for_msgs (self));
+            msg_t *msg = msg_new (ZKERNEL_REMOVE);
+            msg->reply_to = self->mailbox_ifc;
+            msg->ptr = ev_handler;
+            msg->handler_id = ev_handler->handler_id;
+            mailbox_enqueue (&self->reactor, msg);
+            ev_handler =
+                (struct event_handler *) zset_next (self->event_handlers);
+        }
+        while (zset_non_empty (self->event_handlers))
+            process_mbox (self, s_wait_for_msgs (self));
+        zset_destroy (&self->event_handlers);
         close (self->ctrl_fd);
-        //  tell reactor we are leaving
         free (self);
         *self_p = NULL;
     }
@@ -80,16 +111,31 @@ process_msg (socket_t *self, msg_t **msg_p)
 
     switch (msg->cmd) {
     case ZKERNEL_REGISTER:
+        assert (msg->ptr);
+        ((struct event_handler *) msg->ptr)->handler_id = msg->handler_id;
         msg_destroy (&msg);
         break;
-    case ZKERNEL_NEW_SESSION:
+    case ZKERNEL_REMOVE:
+        assert (msg->ptr);
+        zset_remove (self->event_handlers, msg->ptr);
+        free (msg->ptr);
+        msg_destroy (&msg);
+        break;
+    case ZKERNEL_NEW_SESSION: {
         printf ("new session: %p\n", msg->ptr);
+        struct event_handler *event_handler = (struct event_handler *)
+            malloc (sizeof *event_handler);
+        assert (event_handler);
+        *event_handler = (struct event_handler) { .handler_id = NULL };
         session = (tcp_session_t *) msg->ptr;
         msg->cmd = ZKERNEL_REGISTER;
         msg->reply_to = self->mailbox_ifc;
         msg->handler = tcp_session_io_handler (session);
+        msg->ptr = event_handler;
         mailbox_enqueue (&self->reactor, msg);
+        zset_add (self->event_handlers, event_handler);
         break;
+                              }
     case ZKERNEL_SESSION_CLOSED:
         printf ("session %p closed\n", msg->ptr);
         msg_destroy (&msg);
@@ -105,22 +151,32 @@ int
 socket_bind (socket_t *self, unsigned short port)
 {
     tcp_listener_t *listener = tcp_listener_new (&self->mailbox_ifc);
+    struct event_handler *event_handler = NULL;
     if (!listener)
         goto fail;
     int rc = tcp_listener_bind (listener, port);
     if (rc == -1)
         goto fail;
+    event_handler = (struct event_handler *)
+        malloc (sizeof *event_handler);
+    if (!event_handler)
+        goto fail;
+    *event_handler = (struct event_handler) { .handler_id = NULL };
     msg_t *msg = msg_new (ZKERNEL_REGISTER);
     if (!msg)
         goto fail;
     msg->reply_to = self->mailbox_ifc;
     msg->handler = tcp_listener_io_handler (listener);
+    msg->ptr = event_handler;
     mailbox_enqueue (&self->reactor, msg);
+    zset_add (self->event_handlers, event_handler);
     return 0;
 
 fail:
     if (listener)
         tcp_listener_destroy (&listener);
+    if (event_handler)
+        free (event_handler);
     return -1;
 }
 
@@ -131,6 +187,7 @@ socket_connect (socket_t *self, unsigned short port)
 
     tcp_connector_t *connector =
         tcp_connector_new (&self->mailbox_ifc);
+    struct event_handler *event_handler = NULL;
     if (!connector)
         return -1;
     const int rc = tcp_connector_connect (connector, port);
@@ -145,14 +202,24 @@ socket_connect (socket_t *self, unsigned short port)
         return rc;
     }
 
+    event_handler = (struct event_handler *)
+        malloc (sizeof *event_handler);
+    if (!event_handler) {
+        tcp_connector_destroy (&connector);
+        return -1;
+    }
+    *event_handler = (struct event_handler) { .handler_id = NULL };
     msg_t *msg = msg_new (ZKERNEL_REGISTER);
     if (!msg) {
+        free (event_handler);
         tcp_connector_destroy (&connector);
         return -1;
     }
     msg->reply_to = self->mailbox_ifc;
     msg->handler = tcp_connector_io_handler (connector);
+    msg->ptr = event_handler;
     mailbox_enqueue (&self->reactor, msg);
+    zset_add (self->event_handlers, event_handler);
     return 0;
 }
 
@@ -223,15 +290,5 @@ s_wait_for_msgs (socket_t *self)
             assert (ptr);
         }
     }
-    struct msg_t *msg = (struct msg_t *) ptr;
-    //  Transform LIFO to FIFO
-    msg_t *prev = NULL;
-    while (msg->next) {
-        msg_t *next = msg->next;
-        msg->next = prev;
-        prev = msg;
-        msg = next;
-    }
-    msg->next = prev;
-    return msg;
+    return (struct msg_t *) ptr;
 }
