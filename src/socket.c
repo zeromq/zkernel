@@ -140,6 +140,10 @@ process_msg (socket_t *self, msg_t **msg_p)
         printf ("session %p closed\n", msg->ptr);
         msg_destroy (&msg);
         break;
+    case ZKERNEL_READY_TO_SEND:
+        printf ("session %p is ready to send data\n", msg->ptr);
+        msg_destroy (&msg);
+        break;
     default:
         printf ("unhandled message: %d\n", msg->cmd);
         msg_destroy (&msg);

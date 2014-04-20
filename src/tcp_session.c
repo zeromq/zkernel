@@ -13,6 +13,7 @@
 
 struct tcp_session {
     int fd;
+    int event_mask;
     mailbox_t *owner;
 };
 
@@ -21,7 +22,7 @@ tcp_session_new (int fd, mailbox_t *owner)
 {
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self)
-        *self = (tcp_session_t) { .fd = fd, .owner = owner };
+        *self = (tcp_session_t) { .fd = fd, .event_mask = 3, .owner = owner };
     return self;
 }
 
@@ -51,7 +52,7 @@ io_init (void *self_, int *fd, uint32_t *timer_interval)
     assert (rc == 0);
 
     *fd = self->fd;
-    return 3;
+    return self->event_mask;
 }
 
 static int
@@ -63,6 +64,7 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     if ((flags & ZKERNEL_IO_ERROR) == ZKERNEL_IO_ERROR) {
         printf ("tcp_session: I/O error\n");
         *fd = -1;
+        self->event_mask = 0;
         return 0;
     }
 
@@ -79,15 +81,19 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             assert (msg);
             msg->ptr = self;
             mailbox_enqueue (self->owner, msg);
-            return 0;
+            self->event_mask &= ~1;
         }
-        else {
+        else
             assert (errno == EAGAIN);
-            return 1;
-        }
     }
-    else
-        return 1;
+    if ((flags & ZKERNEL_OUTPUT_READY) == ZKERNEL_OUTPUT_READY) {
+        msg_t *msg = msg_new (ZKERNEL_READY_TO_SEND);
+        msg->ptr = self;
+        mailbox_enqueue (self->owner, msg);
+        self->event_mask &= ~2;
+        return self->event_mask;
+    }
+    return self->event_mask;
 }
 
 struct io_handler
