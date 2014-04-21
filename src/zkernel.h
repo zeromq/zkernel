@@ -5,6 +5,7 @@
 #define ZKERNEL_KILL            1
 #define ZKERNEL_REGISTER        2
 #define ZKERNEL_REMOVE          3
+#define ZKERNEL_ACTIVATE        4
 
 //  Event ids
 #define ZKERNEL_NEW_SESSION     16

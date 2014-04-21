@@ -51,6 +51,9 @@ static struct event_source *
 static void
     s_remove (reactor_t *self, struct event_source *ev_src);
 
+static void
+    s_activate (reactor_t *self, struct event_source *ev_src, int event_mask);
+
 static struct timer *
     s_alloc_timer (reactor_t *self);
 
@@ -321,6 +324,13 @@ s_loop (void *udata)
                     mailbox_enqueue (&msg->reply_to, msg);
                 }
                 else
+                if (msg->cmd == ZKERNEL_ACTIVATE) {
+                    struct event_source *ev_src =
+                        (struct event_source *) msg->handler_id;
+                    assert (ev_src);
+                    s_activate (self, ev_src, msg->event_mask);
+                }
+                else
                     msg_destroy (&msg);
                 msg = next_msg;
             }
@@ -385,6 +395,23 @@ s_remove (reactor_t *self, struct event_source *ev_src)
         s_free_timer (timer);
     }
     free (ev_src);
+}
+
+static void
+s_activate (reactor_t *self, struct event_source *ev_src, int event_mask)
+{
+    if ((ev_src->event_mask | event_mask) != ev_src->event_mask)  {
+        if (ev_src->fd != -1) {
+            struct epoll_event ev = {
+                .events = event_mask,
+                .data = ev_src
+            };
+            const int rc = epoll_ctl (
+                self->poll_fd, EPOLL_CTL_MOD, ev_src->fd, &ev);
+            assert (rc == 0);
+        }
+        ev_src->event_mask |= event_mask;
+    }
 }
 
 static int
