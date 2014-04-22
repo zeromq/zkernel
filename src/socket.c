@@ -19,6 +19,8 @@
 #include "set.h"
 #include "zkernel.h"
 
+#define MAX_SESSIONS 8
+
 struct event_handler {
     void *handler_id;
 };
@@ -28,6 +30,8 @@ struct socket {
     struct mailbox reactor;
     void *mbox;
     zset_t *event_handlers;
+    tcp_session_t *sessions [MAX_SESSIONS];
+    size_t current_session;
     struct mailbox mailbox_ifc;
 };
 
@@ -128,6 +132,9 @@ process_msg (socket_t *self, msg_t **msg_p)
         assert (event_handler);
         *event_handler = (struct event_handler) { .handler_id = NULL };
         session = (tcp_session_t *) msg->ptr;
+        for (int i = 0; i < MAX_SESSIONS; i++)
+            if (self->sessions [i] == NULL)
+                self->sessions [i] = session;
         msg->cmd = ZKERNEL_REGISTER;
         msg->reply_to = self->mailbox_ifc;
         msg->handler = tcp_session_io_handler (session);
