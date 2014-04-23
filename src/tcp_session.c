@@ -105,3 +105,12 @@ tcp_session_io_handler (tcp_session_t *self)
     };
     return (struct io_handler) { .object = self, .ops = &ops };
 }
+
+int
+tcp_session_send (tcp_session_t *self, const char *data, size_t size)
+{
+    const int rc = write (self->fd, data, size);
+    if (rc == -1)
+        return -1;
+    return 0;
+}

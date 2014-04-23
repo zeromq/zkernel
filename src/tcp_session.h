@@ -17,4 +17,7 @@ void
 struct io_handler
     tcp_session_io_handler (tcp_session_t *self);
 
+int
+    tcp_session_send (tcp_session_t *self, const char *data, size_t size);
+
 #endif

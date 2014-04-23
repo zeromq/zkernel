@@ -17,6 +17,9 @@ int
 int
     socket_connect (socket_t *self, unsigned short port);
 
+int
+    socket_send (socket_t *self, const char *data, size_t size);
+
 void
     socket_noop (socket_t *self);
 

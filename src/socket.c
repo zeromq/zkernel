@@ -32,6 +32,7 @@ struct socket {
     zset_t *event_handlers;
     tcp_session_t *sessions [MAX_SESSIONS];
     size_t current_session;
+    size_t active_sessions;
     struct mailbox mailbox_ifc;
 };
 
@@ -131,10 +132,14 @@ process_msg (socket_t *self, msg_t **msg_p)
             malloc (sizeof *event_handler);
         assert (event_handler);
         *event_handler = (struct event_handler) { .handler_id = NULL };
+        assert (self->active_sessions < MAX_SESSIONS);
         session = (tcp_session_t *) msg->ptr;
-        for (int i = 0; i < MAX_SESSIONS; i++)
-            if (self->sessions [i] == NULL)
-                self->sessions [i] = session;
+        for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
+            if (self->sessions [i] == NULL) {
+                self->sessions [i] = self->sessions [self->active_sessions];
+                self->sessions [self->active_sessions++] = session;
+                break;
+            }
         msg->cmd = ZKERNEL_REGISTER;
         msg->reply_to = self->mailbox_ifc;
         msg->handler = tcp_session_io_handler (session);
@@ -145,6 +150,17 @@ process_msg (socket_t *self, msg_t **msg_p)
                               }
     case ZKERNEL_SESSION_CLOSED:
         printf ("session %p closed\n", msg->ptr);
+        for (int i = 0; i < MAX_SESSIONS; i++) {
+            if (self->sessions [i] == msg->ptr) {
+                if (i < self->active_sessions) {
+                    self->sessions [i] = self->sessions [self->active_sessions];
+                    self->sessions [self->active_sessions--] = NULL;
+                }
+                else
+                    self->sessions [i] = NULL;
+                break;
+            }
+        }
         msg_destroy (&msg);
         break;
     case ZKERNEL_READY_TO_SEND:
@@ -231,6 +247,30 @@ socket_connect (socket_t *self, unsigned short port)
     msg->ptr = event_handler;
     mailbox_enqueue (&self->reactor, msg);
     zset_add (self->event_handlers, event_handler);
+    return 0;
+}
+
+int
+socket_send (socket_t *self, const char *data, size_t size)
+{
+    assert (self);
+    if (self->active_sessions == 0)
+        return -1;
+    tcp_session_t *session = self->sessions [self->current_session];
+    assert (session);
+    const int rc = tcp_session_send (session, data, size);
+    if (rc == -1) {
+        self->active_sessions--;
+        if (self->current_session < self->active_sessions) {
+            self->sessions [self->current_session] =
+                self->sessions [self->active_sessions];
+            self->sessions [self->active_sessions] = session;
+        }
+    }
+    else
+        self->current_session++;
+    if (self->current_session >= self->active_sessions)
+        self->current_session = 0;
     return 0;
 }
 
