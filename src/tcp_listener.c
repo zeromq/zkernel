@@ -14,8 +14,10 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include "zkernel.h"
+#include "event_handler.h"
 
 struct tcp_listener {
+    event_handler_t base;
     int fd;
     mailbox_t *owner;
 };

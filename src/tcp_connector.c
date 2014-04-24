@@ -15,8 +15,10 @@
 #include "mailbox.h"
 #include "tcp_connector.h"
 #include "zkernel.h"
+#include "event_handler.h"
 
 struct tcp_connector {
+    event_handler_t base;
     struct addrinfo *addrinfo;
     int fd;
     int err;

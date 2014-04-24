@@ -10,8 +10,10 @@
 #include "tcp_session.h"
 #include "msg.h"
 #include "zkernel.h"
+#include "event_handler.h"
 
 struct tcp_session {
+    event_handler_t base;
     int fd;
     int event_mask;
     mailbox_t *owner;

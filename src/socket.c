@@ -18,12 +18,9 @@
 #include "msg.h"
 #include "set.h"
 #include "zkernel.h"
+#include "event_handler.h"
 
 #define MAX_SESSIONS 8
-
-struct event_handler {
-    void *handler_id;
-};
 
 struct socket {
     int ctrl_fd;
@@ -81,15 +78,15 @@ socket_destroy (socket_t **self_p)
     assert (self_p);
     if (*self_p) {
         socket_t *self = *self_p;
-        struct event_handler *ev_handler =
-            (struct event_handler *) zset_first (self->event_handlers);
+        event_handler_t *ev_handler =
+            (event_handler_t *) zset_first (self->event_handlers);
         while (ev_handler) {
-            while (ev_handler->handler_id == NULL)
+            while (event_handler_id (ev_handler) == NULL)
                 process_mbox (self, s_wait_for_msgs (self));
             msg_t *msg = msg_new (ZKERNEL_REMOVE);
             msg->reply_to = self->mailbox_ifc;
             msg->ptr = ev_handler;
-            msg->handler_id = ev_handler->handler_id;
+            msg->handler_id = event_handler_id (ev_handler);
             mailbox_enqueue (&self->reactor, msg);
             ev_handler =
                 (struct event_handler *) zset_next (self->event_handlers);
@@ -117,21 +114,17 @@ process_msg (socket_t *self, msg_t **msg_p)
     switch (msg->cmd) {
     case ZKERNEL_REGISTER:
         assert (msg->ptr);
-        ((struct event_handler *) msg->ptr)->handler_id = msg->handler_id;
+        event_handler_set_id (
+            (struct event_handler *) msg->ptr, msg->handler_id);
         msg_destroy (&msg);
         break;
     case ZKERNEL_REMOVE:
         assert (msg->ptr);
         zset_remove (self->event_handlers, msg->ptr);
-        free (msg->ptr);
         msg_destroy (&msg);
         break;
-    case ZKERNEL_NEW_SESSION: {
+    case ZKERNEL_NEW_SESSION:
         printf ("new session: %p\n", msg->ptr);
-        struct event_handler *event_handler = (struct event_handler *)
-            malloc (sizeof *event_handler);
-        assert (event_handler);
-        *event_handler = (struct event_handler) { .handler_id = NULL };
         assert (self->active_sessions < MAX_SESSIONS);
         session = (tcp_session_t *) msg->ptr;
         for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
@@ -143,11 +136,10 @@ process_msg (socket_t *self, msg_t **msg_p)
         msg->cmd = ZKERNEL_REGISTER;
         msg->reply_to = self->mailbox_ifc;
         msg->handler = tcp_session_io_handler (session);
-        msg->ptr = event_handler;
+        msg->ptr = session;
         mailbox_enqueue (&self->reactor, msg);
-        zset_add (self->event_handlers, event_handler);
+        zset_add (self->event_handlers, session);
         break;
-                              }
     case ZKERNEL_SESSION_CLOSED:
         printf ("session %p closed\n", msg->ptr);
         for (int i = 0; i < MAX_SESSIONS; i++) {
@@ -184,19 +176,14 @@ socket_bind (socket_t *self, unsigned short port)
     int rc = tcp_listener_bind (listener, port);
     if (rc == -1)
         goto fail;
-    event_handler = (struct event_handler *)
-        malloc (sizeof *event_handler);
-    if (!event_handler)
-        goto fail;
-    *event_handler = (struct event_handler) { .handler_id = NULL };
     msg_t *msg = msg_new (ZKERNEL_REGISTER);
     if (!msg)
         goto fail;
     msg->reply_to = self->mailbox_ifc;
     msg->handler = tcp_listener_io_handler (listener);
-    msg->ptr = event_handler;
+    msg->ptr = listener;
     mailbox_enqueue (&self->reactor, msg);
-    zset_add (self->event_handlers, event_handler);
+    zset_add (self->event_handlers, listener);
     return 0;
 
 fail:
@@ -228,14 +215,6 @@ socket_connect (socket_t *self, unsigned short port)
         tcp_connector_destroy (&connector);
         return rc;
     }
-
-    event_handler = (struct event_handler *)
-        malloc (sizeof *event_handler);
-    if (!event_handler) {
-        tcp_connector_destroy (&connector);
-        return -1;
-    }
-    *event_handler = (struct event_handler) { .handler_id = NULL };
     msg_t *msg = msg_new (ZKERNEL_REGISTER);
     if (!msg) {
         free (event_handler);
@@ -244,9 +223,9 @@ socket_connect (socket_t *self, unsigned short port)
     }
     msg->reply_to = self->mailbox_ifc;
     msg->handler = tcp_connector_io_handler (connector);
-    msg->ptr = event_handler;
+    msg->ptr = connector;
     mailbox_enqueue (&self->reactor, msg);
-    zset_add (self->event_handlers, event_handler);
+    zset_add (self->event_handlers, connector);
     return 0;
 }
 
