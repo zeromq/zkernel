@@ -54,6 +54,10 @@ static void
 static void
     s_activate (reactor_t *self, struct event_source *ev_src, int event_mask);
 
+static void
+    s_update_event_source (
+        reactor_t *self, struct event_source *ev_src, int fd, int event_mask);
+
 static struct timer *
     s_alloc_timer (reactor_t *self);
 
@@ -197,39 +201,7 @@ s_loop (void *udata)
                     timer->ev_src = ev_src;
                     ev_src->timer = timer->t;
                 }
-                uint32_t event_mask = 0;
-                if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
-                    event_mask |= EPOLLIN | EPOLLONESHOT;
-                if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
-                    event_mask |= EPOLLOUT | EPOLLONESHOT;
-                if (fd != ev_src->fd) {
-                    struct epoll_event ev = {};
-                    const int rc = epoll_ctl (
-                        self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
-                    assert (rc == 0 || errno == EBADF || errno == ENOENT);
-                    if (fd != -1) {
-                        struct epoll_event ev = {
-                            .events = event_mask,
-                            .data = ev_src
-                        };
-                        const int rc = epoll_ctl (
-                            self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
-                        assert (rc == 0);
-                    }
-                    ev_src->event_mask = event_mask;
-                    ev_src->fd = fd;
-                }
-                else
-                if (ev_src->event_mask != event_mask) {
-                    struct epoll_event ev = {
-                        .events = event_mask,
-                        .data = ev_src
-                    };
-                    const int rc = epoll_ctl (
-                        self->poll_fd, EPOLL_CTL_MOD, ev_src->fd, &ev);
-                    assert (rc == 0);
-                    ev_src->event_mask = event_mask;
-                }
+                s_update_event_source (self, ev_src, fd, rc);
             }
         }
         struct timer *timer = s_next_timer (self);
@@ -240,41 +212,7 @@ s_loop (void *udata)
             uint32_t timer_interval = 0;
             const int rc = io_handler_timeout (
                 &ev_src->handler, &fd, &timer_interval);
-            uint32_t event_mask = 0;
-            if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
-                event_mask |= EPOLLIN | EPOLLONESHOT;
-            if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
-                event_mask |= EPOLLOUT | EPOLLONESHOT;
-            if (fd != ev_src->fd) {
-                if (ev_src->fd != -1) {
-                    struct epoll_event ev = {};
-                    const int rc = epoll_ctl (
-                        self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
-                    assert (rc == 0 || errno == EBADF || errno == ENOENT);
-                }
-                if (fd != -1) {
-                    struct epoll_event ev = {
-                        .events = event_mask,
-                        .data = ev_src
-                    };
-                    const int rc = epoll_ctl (
-                        self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
-                    assert (rc == 0);
-                }
-                ev_src->event_mask = event_mask;
-                ev_src->fd = fd;
-            }
-            else
-            if (ev_src->event_mask != event_mask) {
-                struct epoll_event ev = {
-                    .events = event_mask,
-                    .data = ev_src
-                };
-                const int rc = epoll_ctl (
-                    self->poll_fd, EPOLL_CTL_MOD, ev_src->fd, &ev);
-                assert (rc == 0);
-                ev_src->event_mask = event_mask;
-            }
+            s_update_event_source (self, ev_src, fd, rc);
             if (timer_interval > 0) {
                 timer->t = now + timer_interval;
                 timer->ev_src = ev_src;
@@ -349,21 +287,10 @@ s_register (reactor_t *self, io_handler_t *handler)
         return NULL;
     *ev_src = (struct event_source) { .fd = -1, .handler = *handler };
 
+    int fd = -1;
     uint32_t timer_interval = 0;
-    int rc = io_handler_init (handler, &ev_src->fd, &timer_interval);
-    if (ev_src->fd != -1) {
-        if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
-            ev_src->event_mask |= EPOLLIN | EPOLLONESHOT;
-        if ((rc & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
-            ev_src->event_mask |= EPOLLOUT | EPOLLONESHOT;
-
-        struct epoll_event ev = {
-            .events = ev_src->event_mask,
-            .data = ev_src
-        };
-        rc = epoll_ctl (self->poll_fd, EPOLL_CTL_ADD, ev_src->fd, &ev);
-        assert (rc == 0);
-    }
+    const int rc = io_handler_init (handler, &fd, &timer_interval);
+    s_update_event_source (self, ev_src, fd, rc);
     if (timer_interval > 0) {
         struct timer *timer = s_alloc_timer (self);
         assert (timer);
@@ -398,18 +325,8 @@ s_remove (reactor_t *self, struct event_source *ev_src)
 static void
 s_activate (reactor_t *self, struct event_source *ev_src, int event_mask)
 {
-    if ((ev_src->event_mask | event_mask) != ev_src->event_mask)  {
-        if (ev_src->fd != -1) {
-            struct epoll_event ev = {
-                .events = event_mask,
-                .data = ev_src
-            };
-            const int rc = epoll_ctl (
-                self->poll_fd, EPOLL_CTL_MOD, ev_src->fd, &ev);
-            assert (rc == 0);
-        }
-        ev_src->event_mask |= event_mask;
-    }
+    s_update_event_source (
+        self, ev_src, ev_src->fd, ev_src->event_mask | event_mask);
 }
 
 static int
@@ -431,6 +348,44 @@ s_send_msg (void *self_, struct msg_t *msg)
         assert (rc == sizeof v);
     }
     return 0;
+}
+
+static void
+s_update_event_source (
+    reactor_t *self, struct event_source *ev_src, int fd, int event_mask)
+{
+    if (fd != ev_src->fd) {
+        if (ev_src->fd != -1) {
+            struct epoll_event ev = {};
+            const int rc = epoll_ctl (
+                self->poll_fd, EPOLL_CTL_DEL, ev_src->fd, &ev);
+            assert (rc == 0 || errno == EBADF || errno == ENOENT);
+        }
+        if (fd != -1) {
+            struct epoll_event ev = { .data = ev_src };
+            if ((event_mask & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
+                ev.events |= EPOLLIN | EPOLLONESHOT;
+            if ((event_mask & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
+                ev.events |= EPOLLOUT | EPOLLONESHOT;
+            const int rc = epoll_ctl (
+                self->poll_fd, EPOLL_CTL_ADD, fd, &ev);
+            assert (rc == 0);
+        }
+        ev_src->fd = fd;
+        ev_src->event_mask = event_mask;
+    }
+    else
+    if (ev_src->event_mask != event_mask) {
+        struct epoll_event ev = { .data = ev_src };
+        if ((event_mask & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
+            ev.events |= EPOLLIN | EPOLLONESHOT;
+        if ((event_mask & ZKERNEL_POLLOUT) == ZKERNEL_POLLOUT)
+            ev.events |= EPOLLOUT | EPOLLONESHOT;
+        const int rc = epoll_ctl (
+            self->poll_fd, EPOLL_CTL_MOD, fd, &ev);
+        assert (rc == 0);
+        ev_src->event_mask = event_mask;
+    }
 }
 
 struct timer *
