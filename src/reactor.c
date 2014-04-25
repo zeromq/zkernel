@@ -197,8 +197,6 @@ s_loop (void *udata)
                     timer->ev_src = ev_src;
                     ev_src->timer = timer->t;
                 }
-#define ZKERNEL_POLLIN 1
-#define ZKERNEL_POLLOUT 2
                 uint32_t event_mask = 0;
                 if ((rc & ZKERNEL_POLLIN) == ZKERNEL_POLLIN)
                     event_mask |= EPOLLIN | EPOLLONESHOT;

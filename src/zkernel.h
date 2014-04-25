@@ -1,6 +1,10 @@
 #ifndef __ZKERNEL_H_INCLUDED__
 #define __ZKERNEL_H_INCLUDED__
 
+//  Flags
+#define ZKERNEL_POLLIN          1
+#define ZKERNEL_POLLOUT         2
+
 //  Command ids
 #define ZKERNEL_KILL            1
 #define ZKERNEL_REGISTER        2
