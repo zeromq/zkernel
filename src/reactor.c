@@ -175,22 +175,18 @@ s_loop (void *udata)
                 msg_flag = true;
             else {
                 uint32_t flags = 0;
-                if ((what & EPOLLIN) == EPOLLIN) {
+                if ((what & EPOLLIN) == EPOLLIN)
                     flags |= ZKERNEL_INPUT_READY;
-                    ev_src->event_mask = 0;
-                }
-                if ((what & EPOLLOUT) == EPOLLOUT) {
+                if ((what & EPOLLOUT) == EPOLLOUT)
                     flags |= ZKERNEL_OUTPUT_READY;
-                    ev_src->event_mask = 0;
-                }
-                if ((what & (EPOLLERR | EPOLLHUP)) != 0) {
+                if ((what & (EPOLLERR | EPOLLHUP)) != 0)
                     flags |= ZKERNEL_IO_ERROR;
-                    ev_src->event_mask = 0;
-                }
                 int fd = ev_src->fd;
                 uint32_t timer_interval = 0;
                 const int rc = io_handler_event (
                     &ev_src->handler, flags, &fd, &timer_interval);
+                ev_src->event_mask = 0;
+                s_update_event_source (self, ev_src, fd, rc);
                 if (timer_interval > 0) {
                     struct timer *timer = NULL;
                     if (ev_src->timer != 0)
@@ -201,7 +197,6 @@ s_loop (void *udata)
                     timer->ev_src = ev_src;
                     ev_src->timer = timer->t;
                 }
-                s_update_event_source (self, ev_src, fd, rc);
             }
         }
         struct timer *timer = s_next_timer (self);
