@@ -239,6 +239,11 @@ socket_send (socket_t *self, const char *data, size_t size)
     assert (session);
     const int rc = tcp_session_send (session, data, size);
     if (rc == -1) {
+        msg_t *msg = msg_new (ZKERNEL_ACTIVATE);
+        assert (msg);
+        msg->handler_id = event_handler_id ((event_handler_t *) session);
+        msg->event_mask = ZKERNEL_POLLOUT;
+        mailbox_enqueue (&self->reactor, msg);
         self->active_sessions--;
         if (self->current_session < self->active_sessions) {
             self->sessions [self->current_session] =
