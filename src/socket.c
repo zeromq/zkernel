@@ -157,6 +157,13 @@ process_msg (socket_t *self, msg_t **msg_p)
         break;
     case ZKERNEL_READY_TO_SEND:
         printf ("session %p is ready to send data\n", msg->ptr);
+        for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
+            if (self->sessions [i] == msg->ptr) {
+                self->sessions [i] = self->sessions [self->active_sessions];
+                self->sessions [self->active_sessions++] =
+                    (tcp_session_t *) msg->ptr;
+                break;
+            }
         msg_destroy (&msg);
         break;
     default:
