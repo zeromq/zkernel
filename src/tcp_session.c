@@ -73,8 +73,8 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     if ((flags & ZKERNEL_INPUT_READY) == ZKERNEL_INPUT_READY) {
         char buf [80];
         int rc = read (self->fd, buf, sizeof buf);
-        while (rc > 0) {
-            printf ("%d bytes read\n", rc);
+        while (rc > 0 || (rc == -1 && errno == EINTR)) {
+            printf ("tcp_session: %d bytes read\n", rc);
             rc = read (self->fd, buf, sizeof buf);
         }
         if (rc == 0) {
