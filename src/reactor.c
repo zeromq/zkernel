@@ -138,7 +138,7 @@ reactor_mailbox (reactor_t *self)
     assert (self);
     return (mailbox_t) {
         .object = self,
-        .ftab = { .enqueue = s_send_msg }
+        .ftab.enqueue = s_send_msg
     };
 }
 
