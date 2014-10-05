@@ -1,7 +1,7 @@
 //  Message decoder interface
 
-#ifndef __I_MSG_DECODER_H_INCLUDED__
-#define __I_MSG_DECODER_H_INCLUDED__
+#ifndef __MSG_DECODER_H_INCLUDED__
+#define __MSG_DECODER_H_INCLUDED__
 
 #include <assert.h>
 #include <unistd.h>

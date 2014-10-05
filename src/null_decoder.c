@@ -45,7 +45,7 @@ s_data_ready (void *self_, size_t n)
     null_decoder_t *self = (null_decoder_t *) self_;
     assert (self);
 
-    printf ("null_decoder: %z bytes ready\n", n);
+    printf ("null_decoder: %zd bytes ready\n", n);
     self->available = n;
 }
 
@@ -55,7 +55,7 @@ s_decode (void *self_)
     null_decoder_t *self = (null_decoder_t *) self_;
     assert (self);
 
-    printf ("null_decoder: decoding %z bytes\n", self->available);
+    printf ("null_decoder: decoding %zd bytes\n", self->available);
     self->available = 0;
     return 0;
 }
