@@ -176,7 +176,7 @@ process_msg (socket_t *self, msg_t **msg_p)
 int
 socket_bind (socket_t *self, unsigned short port)
 {
-    tcp_listener_t *listener = tcp_listener_new (&self->mailbox_ifc);
+    tcp_listener_t *listener = tcp_listener_new (NULL, &self->mailbox_ifc);
     struct event_handler *event_handler = NULL;
     if (!listener)
         goto fail;
@@ -207,7 +207,7 @@ socket_connect (socket_t *self, unsigned short port)
     assert (self);
 
     tcp_connector_t *connector =
-        tcp_connector_new (&self->mailbox_ifc);
+        tcp_connector_new (NULL, &self->mailbox_ifc);
     struct event_handler *event_handler = NULL;
     if (!connector)
         return -1;

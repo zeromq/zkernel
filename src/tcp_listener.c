@@ -19,16 +19,16 @@
 struct tcp_listener {
     event_handler_t base;
     int fd;
+    msg_decoder_constructor_t *decoder_constructor;
     mailbox_t *owner;
 };
 
-
 tcp_listener_t *
-tcp_listener_new (mailbox_t *owner)
+tcp_listener_new (msg_decoder_constructor_t *decoder_constructor, mailbox_t *owner)
 {
     tcp_listener_t *self = malloc (sizeof *self);
     if (self)
-        *self = (tcp_listener_t) { .fd = -1, .owner = owner };
+        *self = (tcp_listener_t) { .fd = -1, .decoder_constructor = decoder_constructor, .owner = owner };
     return self;
 }
 
@@ -117,7 +117,7 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
         }
         printf ("connection accepted\n");
 
-        tcp_session_t *session = tcp_session_new (rc, self->owner);
+        tcp_session_t *session = tcp_session_new (rc, self->decoder_constructor, self->owner);
         if (!session) {
             close (rc);
             continue;

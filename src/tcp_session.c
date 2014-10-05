@@ -11,20 +11,27 @@
 #include "msg.h"
 #include "zkernel.h"
 #include "event_handler.h"
+#include "msg_decoder.h"
 
 struct tcp_session {
     event_handler_t base;
     int fd;
+    msg_decoder_t *msg_decoder;
     int event_mask;
     mailbox_t *owner;
 };
 
 tcp_session_t *
-tcp_session_new (int fd, mailbox_t *owner)
+tcp_session_new (int fd, msg_decoder_constructor_t *msg_decoder_constructor, mailbox_t *owner)
 {
+    msg_decoder_t *msg_decoder = msg_decoder_constructor ();
+    if (!msg_decoder)
+        return NULL;
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self)
-        *self = (tcp_session_t) { .fd = fd, .event_mask = 3, .owner = owner };
+        *self = (tcp_session_t) { .fd = fd, .msg_decoder = msg_decoder, .event_mask = 3, .owner = owner };
+    else
+        msg_decoder_destroy (&msg_decoder);
     return self;
 }
 
@@ -71,10 +78,19 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     }
 
     if ((flags & ZKERNEL_INPUT_READY) == ZKERNEL_INPUT_READY) {
-        char buf [80];
-        int rc = read (self->fd, buf, sizeof buf);
+        msg_decoder_t *decoder = self->msg_decoder;
+        void *buf;
+        size_t bufsize;
+        msg_decoder_buffer (decoder, &buf, &bufsize);
+        int rc = read (self->fd, buf, bufsize);
         while (rc > 0 || (rc == -1 && errno == EINTR)) {
-            printf ("tcp_session: %d bytes read\n", rc);
+            msg_decoder_data_ready (decoder, (size_t) rc);
+            while ((rc = msg_decoder_decode (decoder)) > 0) {
+                printf ("decoded %d messages\n", rc);
+            }
+            // XXX Handle message decoding errors
+            assert (rc != -1);
+            msg_decoder_buffer (decoder, &buf, &bufsize);
             rc = read (self->fd, buf, sizeof buf);
         }
         if (rc == 0) {

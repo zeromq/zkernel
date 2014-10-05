@@ -5,11 +5,12 @@
 
 #include "mailbox.h"
 #include "io_handler.h"
+#include "msg_decoder.h"
 
 typedef struct tcp_session tcp_session_t;
 
 tcp_session_t *
-    tcp_session_new (int fd, mailbox_t *owner);
+    tcp_session_new (int fd, msg_decoder_constructor_t *decoder_constructor, mailbox_t *owner);
 
 void
     tcp_session_destroy (tcp_session_t **self_p);

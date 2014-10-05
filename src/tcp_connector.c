@@ -21,16 +21,17 @@ struct tcp_connector {
     event_handler_t base;
     struct addrinfo *addrinfo;
     int fd;
+    msg_decoder_constructor_t *decoder_constructor;
     int err;
     mailbox_t *owner;
 };
 
 tcp_connector_t *
-tcp_connector_new (mailbox_t *owner)
+tcp_connector_new (msg_decoder_constructor_t *decoder_constructor, mailbox_t *owner)
 {
     tcp_connector_t *self = malloc (sizeof *self);
     if (self)
-        *self = (tcp_connector_t) { .fd = -1, .owner = owner };
+        *self = (tcp_connector_t) { .fd = -1, .decoder_constructor = decoder_constructor, .owner = owner };
     return self;
 }
 
