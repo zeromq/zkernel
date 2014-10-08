@@ -43,6 +43,9 @@ static msg_t *
 static void
     process_mbox (socket_t *self, msg_t *msg);
 
+static void
+    s_new_session (socket_t *self, session_event_t *event);
+
 socket_t *
 socket_new (reactor_t *reactor)
 {
@@ -104,15 +107,13 @@ socket_destroy (socket_t **self_p)
 static void
 process_msg (socket_t *self, msg_t **msg_p)
 {
-    tcp_session_t *session;
-
     assert (msg_p);
     if (*msg_p == NULL)
         return;
     msg_t *msg = *msg_p;
     *msg_p = NULL;
 
-    switch (msg->cmd) {
+    switch (msg->msg_type) {
     case ZKERNEL_REGISTER:
         assert (msg->ptr);
         event_handler_set_id (
@@ -125,21 +126,8 @@ process_msg (socket_t *self, msg_t **msg_p)
         msg_destroy (&msg);
         break;
     case ZKERNEL_NEW_SESSION:
-        printf ("new session: %p\n", msg->ptr);
-        assert (self->active_sessions < MAX_SESSIONS);
-        session = (tcp_session_t *) msg->ptr;
-        for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
-            if (self->sessions [i] == NULL) {
-                self->sessions [i] = self->sessions [self->active_sessions];
-                self->sessions [self->active_sessions++] = session;
-                break;
-            }
-        msg->cmd = ZKERNEL_REGISTER;
-        msg->reply_to = self->mailbox_ifc;
-        msg->handler = tcp_session_io_handler (session);
-        msg->ptr = session;
-        mailbox_enqueue (&self->reactor, msg);
-        zset_add (self->event_handlers, session);
+        s_new_session (self, (session_event_t *) msg);
+        msg_destroy (&msg);
         break;
     case ZKERNEL_SESSION_CLOSED:
         printf ("session %p closed\n", msg->ptr);
@@ -168,7 +156,7 @@ process_msg (socket_t *self, msg_t **msg_p)
         msg_destroy (&msg);
         break;
     default:
-        printf ("unhandled message: %d\n", msg->cmd);
+        printf ("unhandled message: %d\n", msg->msg_type);
         msg_destroy (&msg);
         break;
     }
@@ -334,4 +322,24 @@ s_wait_for_msgs (socket_t *self)
         }
     }
     return (struct msg_t *) ptr;
+}
+
+static void
+s_new_session (socket_t *self, session_event_t *event)
+{
+    printf ("new session: %p\n", event->ptr);
+    assert (self->active_sessions < MAX_SESSIONS);
+    tcp_session_t *session = (tcp_session_t *) event->ptr;
+    for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
+        if (self->sessions [i] == NULL) {
+            self->sessions [i] = self->sessions [self->active_sessions];
+            self->sessions [self->active_sessions++] = session;
+            break;
+        }
+    msg_t *msg = msg_new (ZKERNEL_REGISTER);
+    msg->reply_to = self->mailbox_ifc;
+    msg->handler = tcp_session_io_handler (session);
+    msg->ptr = session;
+    mailbox_enqueue (&self->reactor, msg);
+    zset_add (self->event_handlers, session);
 }

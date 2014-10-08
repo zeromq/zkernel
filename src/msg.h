@@ -7,7 +7,7 @@
 #include "io_handler.h"
 
 struct msg_t {
-    int cmd;
+    int msg_type;
     mailbox_ifc_t reply_to;
     struct msg_t *next;
     io_handler_t handler;
@@ -24,5 +24,14 @@ msg_t *
 void
     msg_destroy (msg_t **self_p);
 
-#endif
+struct session_event {
+    struct msg_t base;
+    void *ptr;
+};
 
+typedef struct session_event session_event_t;
+
+session_event_t *
+    session_event_new ();
+
+#endif

@@ -235,19 +235,19 @@ s_loop (void *udata)
             msg->next = prev;
             while (msg) {
                 struct msg_t *next_msg = msg->next;
-                if (msg->cmd == ZKERNEL_KILL) {
+                if (msg->msg_type == ZKERNEL_KILL) {
                     msg_destroy (&msg);
                     stop = 1;
                 }
                 else
-                if (msg->cmd == ZKERNEL_REGISTER) {
+                if (msg->msg_type == ZKERNEL_REGISTER) {
                     struct event_source *ev_src =
                         s_register (self, &msg->handler);
                     msg->handler_id = ev_src;
                     mailbox_enqueue (&msg->reply_to, msg);
                 }
                 else
-                if (msg->cmd == ZKERNEL_REMOVE) {
+                if (msg->msg_type == ZKERNEL_REMOVE) {
                     struct event_source *ev_src =
                         (struct event_source *) msg->handler_id;
                     assert (ev_src);
@@ -255,7 +255,7 @@ s_loop (void *udata)
                     mailbox_enqueue (&msg->reply_to, msg);
                 }
                 else
-                if (msg->cmd == ZKERNEL_ACTIVATE) {
+                if (msg->msg_type == ZKERNEL_ACTIVATE) {
                     struct event_source *ev_src =
                         (struct event_source *) msg->handler_id;
                     assert (ev_src);

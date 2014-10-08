@@ -122,13 +122,13 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             close (rc);
             continue;
         }
-        msg_t *msg = msg_new (ZKERNEL_NEW_SESSION);
-        if (!msg) {
+        session_event_t *ev = session_event_new ();
+        if (ev == NULL) {
             tcp_session_destroy (&session);
             continue;
         }
-        msg->ptr = session;
-        mailbox_enqueue (self->owner, msg);
+        ev->ptr = session;
+        mailbox_enqueue (self->owner, (msg_t *) ev);
     }
     return 1 | 2;
 }
