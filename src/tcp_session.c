@@ -94,20 +94,19 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             rc = read (self->fd, buf, sizeof buf);
         }
         if (rc == 0) {
-            printf ("connection closed\n");
-            msg_t *msg = msg_new (ZKERNEL_SESSION_CLOSED);
-            assert (msg);
-            msg->ptr = self;
-            mailbox_enqueue (self->owner, msg);
+            printf ("tcp_session: Connection closed\n");
+            s_send_session_closed (self);
+            *fd = -1;
             self->event_mask &= ~1;
         }
         else
             assert (errno == EAGAIN);
     }
     if ((flags & ZKERNEL_OUTPUT_READY) == ZKERNEL_OUTPUT_READY) {
-        msg_t *msg = msg_new (ZKERNEL_READY_TO_SEND);
-        msg->ptr = self;
-        mailbox_enqueue (self->owner, msg);
+        ready_to_send_ev_t *ev = ready_to_send_ev_new ();
+        assert (ev);
+        ev->ptr = self;
+        mailbox_enqueue (self->owner, (msg_t *) ev);
         self->event_mask &= ~2;
         return self->event_mask;
     }

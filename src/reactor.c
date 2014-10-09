@@ -121,9 +121,9 @@ reactor_destroy (reactor_t **self_p)
     assert (self_p);
     if (*self_p) {
         reactor_t *self = *self_p;
-        msg_t *msg = msg_new (ZKERNEL_KILL);
-        assert (msg);
-        s_send_msg (self, msg);
+        kill_cmd_t *cmd = kill_cmd_new ();
+        assert (cmd);
+        s_send_msg (self, (msg_t *) cmd);
         pthread_join (self->thread_handle, NULL);
         close (self->poll_fd);
         close (self->ctrl_fd);

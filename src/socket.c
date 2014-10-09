@@ -46,6 +46,12 @@ static void
 static void
     s_new_session (socket_t *self, session_event_t *event);
 
+static void
+    s_session_closed (socket_t *self, session_closed_ev_t *ev);
+
+static void
+    s_ready_to_send (socket_t *self, ready_to_send_ev_t *ev);
+
 socket_t *
 socket_new (reactor_t *reactor)
 {
@@ -130,29 +136,11 @@ process_msg (socket_t *self, msg_t **msg_p)
         msg_destroy (&msg);
         break;
     case ZKERNEL_SESSION_CLOSED:
-        printf ("session %p closed\n", msg->ptr);
-        for (int i = 0; i < MAX_SESSIONS; i++) {
-            if (self->sessions [i] == msg->ptr) {
-                if (i < self->active_sessions) {
-                    self->sessions [i] = self->sessions [self->active_sessions];
-                    self->sessions [self->active_sessions--] = NULL;
-                }
-                else
-                    self->sessions [i] = NULL;
-                break;
-            }
-        }
+        s_session_closed (self, (session_closed_ev_t *) msg);
         msg_destroy (&msg);
         break;
     case ZKERNEL_READY_TO_SEND:
-        printf ("session %p is ready to send data\n", msg->ptr);
-        for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
-            if (self->sessions [i] == msg->ptr) {
-                self->sessions [i] = self->sessions [self->active_sessions];
-                self->sessions [self->active_sessions++] =
-                    (tcp_session_t *) msg->ptr;
-                break;
-            }
+        s_ready_to_send (self, (ready_to_send_ev_t *) msg);
         msg_destroy (&msg);
         break;
     default:
@@ -342,4 +330,34 @@ s_new_session (socket_t *self, session_event_t *event)
     msg->ptr = session;
     mailbox_enqueue (&self->reactor, msg);
     zset_add (self->event_handlers, session);
+}
+
+static void
+s_session_closed (socket_t *self, session_closed_ev_t *ev)
+{
+    printf ("session %p closed\n", ev->ptr);
+    for (int i = 0; i < MAX_SESSIONS; i++) {
+        if (self->sessions [i] == ev->ptr) {
+            if (i < self->active_sessions) {
+                self->sessions [i] = self->sessions [self->active_sessions];
+                self->sessions [self->active_sessions--] = NULL;
+            }
+            else
+                self->sessions [i] = NULL;
+            break;
+        }
+    }
+}
+
+static void
+s_ready_to_send (socket_t *self, ready_to_send_ev_t *ev)
+{
+    printf ("session %p is ready to send data\n", ev->ptr);
+    for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
+        if (self->sessions [i] == ev->ptr) {
+            self->sessions [i] = self->sessions [self->active_sessions];
+            self->sessions [self->active_sessions++] =
+                (tcp_session_t *) ev->ptr;
+            break;
+        }
 }
