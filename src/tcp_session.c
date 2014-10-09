@@ -48,6 +48,15 @@ tcp_session_destroy (tcp_session_t **self_p)
     }
 }
 
+static void
+s_send_session_closed (tcp_session_t *self)
+{
+    session_closed_ev_t *ev = session_closed_ev_new ();
+    assert (ev);
+    ev->ptr = self;
+    mailbox_enqueue (self->owner, (msg_t *) ev);
+}
+
 static int
 io_init (void *self_, int *fd, uint32_t *timer_interval)
 {
@@ -71,7 +80,7 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     assert (self);
 
     if ((flags & ZKERNEL_IO_ERROR) == ZKERNEL_IO_ERROR) {
-        printf ("tcp_session: I/O error\n");
+        s_send_session_closed (self);
         *fd = -1;
         self->event_mask = 0;
         return 0;
