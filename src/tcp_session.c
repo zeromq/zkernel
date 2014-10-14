@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <errno.h>
 
 #include "tcp_session.h"
@@ -16,7 +17,10 @@
 struct tcp_session {
     event_handler_t base;
     int fd;
+    iobuf_t *iobuf;
     msg_decoder_t *msg_decoder;
+    uint8_t *buffer;
+    size_t buffer_size;
     int event_mask;
     mailbox_t *owner;
 };
@@ -24,14 +28,30 @@ struct tcp_session {
 tcp_session_t *
 tcp_session_new (int fd, msg_decoder_constructor_t *msg_decoder_constructor, mailbox_t *owner)
 {
-    msg_decoder_t *msg_decoder = msg_decoder_constructor ();
-    if (!msg_decoder)
-        return NULL;
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
-    if (self)
-        *self = (tcp_session_t) { .fd = fd, .msg_decoder = msg_decoder, .event_mask = 3, .owner = owner };
-    else
-        msg_decoder_destroy (&msg_decoder);
+    if (self) {
+        uint8_t *buffer = malloc (4096);
+        size_t buffer_size = 4096;
+        *self = (tcp_session_t) {
+            .fd = fd,
+            .iobuf = iobuf_new (buffer, buffer_size),
+            .msg_decoder = msg_decoder_constructor (),
+            .buffer = buffer,
+            .buffer_size = buffer_size,
+            .event_mask = 3,
+            .owner = owner
+        };
+        if (self->iobuf == NULL || self->msg_decoder == NULL || self->buffer == NULL) {
+            if (self->iobuf)
+                iobuf_destroy (&self->iobuf);
+            if (self->msg_decoder)
+                msg_decoder_destroy (&self->msg_decoder);
+            if (self->buffer)
+                free (self->buffer);
+            free (self);
+            self = NULL;
+        }
+    }
     return self;
 }
 
@@ -43,6 +63,12 @@ tcp_session_destroy (tcp_session_t **self_p)
         tcp_session_t *self = *self_p;
         if (self->fd != -1)
             close (self->fd);
+        if (self->iobuf)
+            iobuf_destroy (&self->iobuf);
+        if (self->msg_decoder)
+            msg_decoder_destroy (&self->msg_decoder);
+        if (self->buffer)
+            free (self->buffer);
         free (self);
         *self_p = NULL;
     }
@@ -88,19 +114,25 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
 
     if ((flags & ZKERNEL_INPUT_READY) == ZKERNEL_INPUT_READY) {
         msg_decoder_t *decoder = self->msg_decoder;
-        void *buf;
-        size_t bufsize;
-        msg_decoder_buffer (decoder, &buf, &bufsize);
-        int rc = read (self->fd, buf, bufsize);
-        while (rc > 0 || (rc == -1 && errno == EINTR)) {
-            msg_decoder_data_ready (decoder, (size_t) rc);
-            while ((rc = msg_decoder_decode (decoder)) > 0) {
-                printf ("decoded %d messages\n", rc);
+        iobuf_t *iobuf = self->iobuf;
+        int rc = read (self->fd, iobuf->base, iobuf_space (iobuf));
+        while (rc > 0) {
+            iobuf_put (iobuf, (size_t) rc);
+            msg_decoder_result_t res;
+            while (iobuf_available (iobuf) > 0) {
+                const int rc = msg_decoder_decode (decoder, iobuf, &res);
+                // TODO: Handle errors
+                assert (rc == 0);
+                // TODO: Send frames to session owner
+                if (res.frame)
+                    frame_destroy (&res.frame);
             }
-            // XXX Handle message decoding errors
-            assert (rc != -1);
-            msg_decoder_buffer (decoder, &buf, &bufsize);
-            rc = read (self->fd, buf, sizeof buf);
+            if (res.dba_size >= 128)
+                msg_decoder_buffer (decoder, iobuf);
+            else
+                iobuf_init (iobuf, self->buffer, self->buffer_size);
+
+            rc = read (self->fd, iobuf->base, iobuf_space (iobuf));
         }
         if (rc == 0) {
             printf ("tcp_session: Connection closed\n");
@@ -109,7 +141,7 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             self->event_mask &= ~1;
         }
         else
-            assert (errno == EAGAIN);
+            assert (errno == EINTR || errno == EAGAIN);
     }
     if ((flags & ZKERNEL_OUTPUT_READY) == ZKERNEL_OUTPUT_READY) {
         ready_to_send_ev_t *ev = ready_to_send_ev_new ();

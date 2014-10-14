@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 
 struct iobuf {
     uint8_t *base;
@@ -54,6 +55,12 @@ iobuf_read (iobuf_t *self, void *ptr, size_t n)
     memcpy (ptr, self->r, n);
     self->r += n;
     return n;
+}
+
+inline void
+iobuf_put (iobuf_t *self, size_t length)
+{
+    self->w += length;
 }
 
 #endif
