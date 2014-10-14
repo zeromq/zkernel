@@ -123,9 +123,8 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
                 const int rc = msg_decoder_decode (decoder, iobuf, &res);
                 // TODO: Handle errors
                 assert (rc == 0);
-                // TODO: Send frames to session owner
                 if (res.frame)
-                    frame_destroy (&res.frame);
+                    mailbox_enqueue (self->owner, (msg_t *) res.frame);
             }
             if (res.dba_size >= 128)
                 msg_decoder_buffer (decoder, iobuf);
