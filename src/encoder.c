@@ -6,13 +6,13 @@
 #include "encoder.h"
 
 extern inline int
-encoder_frame (encoder_t *self, frame_t **frame_p);
+encoder_encode (encoder_t *self, frame_t *frame, encoder_info_t *info);
 
 extern inline int
-encoder_encode (encoder_t *self, iobuf_t *iobuf);
+encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_info_t *info);
 
 extern inline int
-encoder_error (encoder_t *self);
+encoder_buffer (encoder_t *self, iobuf_t *iobuf, encoder_info_t *info);
 
 void
 encoder_destroy (encoder_t **self_p)

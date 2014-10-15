@@ -3,13 +3,22 @@
 #ifndef __ENCODER_H_INCLUDED__
 #define __ENCODER_H_INCLUDED__
 
+#include <stdbool.h>
+
 #include "frame.h"
 #include "iobuf.h"
 
+struct encoder_info {
+    bool done;
+    size_t dba_size;
+};
+
+typedef struct encoder_info encoder_info_t;
+
 struct encoder_ops {
-    int (*frame) (void *self, frame_t **frame_p);
-    int (*encode) (void *self, iobuf_t *iobuf);
-    int (*error) (void *self);
+    int (*encode) (void *self, frame_t *frame, encoder_info_t *info);
+    int (*read) (void *self, iobuf_t *iobuf, encoder_info_t *info);
+    int (*buffer) (void *self, iobuf_t *iobuf, encoder_info_t *info);
     void (*destroy) (void **self_p);
 };
 
@@ -21,21 +30,21 @@ struct encoder {
 typedef struct encoder encoder_t;
 
 inline int
-encoder_frame (encoder_t *self, frame_t **frame_p)
+encoder_encode (encoder_t *self, frame_t *frame, encoder_info_t *info)
 {
-    return self->ops.frame (self->object, frame_p);
+    return self->ops.encode (self->object, frame, info);
 }
 
 inline int
-encoder_encode (encoder_t *self, iobuf_t *iobuf)
+encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_info_t *info)
 {
-    return self->ops.encode (self->object, iobuf);
+    return self->ops.read (self->object, iobuf, info);
 }
 
 inline int
-encoder_error (encoder_t *self)
+encoder_buffer (encoder_t *self, iobuf_t *iobuf, encoder_info_t *info)
 {
-    return self->ops.error (self->object);
+    return self->ops.buffer (self->object, iobuf, info);
 }
 
 void
