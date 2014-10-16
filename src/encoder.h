@@ -31,6 +31,8 @@ struct encoder {
 
 typedef struct encoder encoder_t;
 
+typedef encoder_t *encoder_constructor_t ();
+
 inline int
 encoder_encode (encoder_t *self, frame_t *frame, encoder_info_t *info)
 {

@@ -57,6 +57,17 @@ iobuf_read (iobuf_t *self, void *ptr, size_t n)
     return n;
 }
 
+inline size_t
+iobuf_write (iobuf_t *self, const void *ptr, size_t n)
+{
+    const size_t space = iobuf_space (self);
+    if (n > space)
+        n = space;
+    memcpy (self->w, ptr, n);
+    self->w += n;
+    return n;
+}
+
 inline void
 iobuf_put (iobuf_t *self, size_t length)
 {
