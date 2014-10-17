@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/types.h>
 
 struct iobuf {
     uint8_t *base;
@@ -28,6 +29,12 @@ iobuf_init (iobuf_t *self, uint8_t *base, size_t size)
     *self = (iobuf_t) { .base = base, .size = size, .r = base, .w = base };
 }
 
+inline void
+iobuf_reset (iobuf_t *self)
+{
+    self->r = self->w = self->base;
+}
+
 inline bool
 iobuf_is_empty (iobuf_t *self)
 {
@@ -45,6 +52,9 @@ iobuf_space (iobuf_t *self)
 {
     return (size_t) (self->base + self->size - self->w);
 }
+
+ssize_t
+    iobuf_recv (iobuf_t *self, int fd);
 
 inline size_t
 iobuf_read (iobuf_t *self, void *ptr, size_t n)

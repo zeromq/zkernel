@@ -7,7 +7,7 @@
 #include "frame.h"
 
 struct null_decoder {
-    int error;
+    frame_t *frame;
 };
 
 typedef struct null_decoder null_decoder_t;
@@ -16,44 +16,77 @@ static null_decoder_t *
 s_new ()
 {
     null_decoder_t *self = malloc (sizeof *self);
-    if (self)
-        *self = (null_decoder_t) {};
+    if (self) {
+        *self = (null_decoder_t) { .frame = frame_new () };
+        if (self->frame == NULL) {
+            free (self);
+            self = NULL;
+        }
+    }
     return self;
 }
 
 static int
-s_buffer (void *self, iobuf_t *iobuf)
+s_write (void *self_, iobuf_t *iobuf, msg_decoder_info_t *info)
 {
-    return -1;
+    null_decoder_t *self = (null_decoder_t *) self_;
+    assert (self);
+
+    frame_t *frame = self->frame;
+    if (frame == NULL)
+        return -1;
+
+    frame->frame_size += iobuf_read (iobuf,
+        frame->frame_data, sizeof frame->frame_data - frame->frame_size);
+
+    *info = (msg_decoder_info_t) { .ready = frame->frame_size > 0 };
+    return 0;
+}
+
+static uint8_t *
+s_buffer (void *self_)
+{
+    null_decoder_t *self = (null_decoder_t *) self_;
+    assert (self);
+
+    frame_t *frame = self->frame;
+    return frame ? frame->frame_data + frame->frame_size : NULL;
 }
 
 static int
-s_decode (void *self_, iobuf_t *iobuf, msg_decoder_result_t *res)
+s_advance (void *self_, size_t n, msg_decoder_info_t *info)
+{
+    null_decoder_t *self = (null_decoder_t *) self_;
+    assert (self);
+
+    frame_t *frame = self->frame;
+    if (frame == NULL)
+        return -1;
+
+    assert (frame->frame_size + n <= sizeof frame->frame_data);
+    frame->frame_size += n;
+    *info = (msg_decoder_info_t) { .ready = frame->frame_size > 0 };
+    return 0;
+}
+
+static frame_t *
+s_decode (void *self_, msg_decoder_info_t *info)
 {
     null_decoder_t *self = (null_decoder_t *) self_;
     assert (self != NULL);
 
-    if (iobuf_available (iobuf) == 0) {
-        *res = (msg_decoder_result_t) {};
-        return 0;
-    }
-    frame_t *frame = frame_new ();
-    if (frame == NULL) {
-        // TODO: Set error value
-        *res = (msg_decoder_result_t) {};
-        return -1;
-    }
-    frame->frame_size = iobuf_read (
-        iobuf, frame->frame_data, sizeof frame->frame_data);
+    frame_t *frame = self->frame;
+    if (frame == NULL)
+        return NULL;
 
-    *res = (msg_decoder_result_t) { .frame = frame };
-    return 0;
-}
+    self->frame = frame_new ();
+    if (self->frame)
+        *info = (msg_decoder_info_t) {
+            .dba_size = sizeof self->frame->frame_data };
+    else
+        *info = (msg_decoder_info_t) {};
 
-static int
-s_error (void *self_)
-{
-    return 0;
+    return frame;
 }
 
 static void
@@ -71,9 +104,10 @@ msg_decoder_t *
 null_decoder_create_decoder ()
 {
     static struct msg_decoder_ops ops = {
+        .write = s_write,
         .buffer = s_buffer,
+        .advance = s_advance,
         .decode = s_decode,
-        .error = s_error,
         .destroy = s_destroy
     };
 

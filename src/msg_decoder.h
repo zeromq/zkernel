@@ -4,21 +4,23 @@
 #define __MSG_DECODER_H_INCLUDED__
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "iobuf.h"
 #include "frame.h"
 
-struct msg_decoder_result {
+struct msg_decoder_info {
+    bool ready;
     size_t dba_size;
-    frame_t *frame;
 };
 
-typedef struct msg_decoder_result msg_decoder_result_t;
+typedef struct msg_decoder_info msg_decoder_info_t;
 
 struct msg_decoder_ops {
-    int (*buffer) (void *self, iobuf_t *iobuf);
-    int (*decode) (void *self, iobuf_t *iobuf, msg_decoder_result_t *res);
-    int (*error) (void *self);
+    int (*write) (void *self, iobuf_t *iobuf, msg_decoder_info_t *info);
+    uint8_t *(*buffer) (void *self);
+    int (*advance) (void *self, size_t n, msg_decoder_info_t *info);
+    frame_t *(*decode) (void *self, msg_decoder_info_t *info);
     void (*destroy) (void **self_p);
 };
 
@@ -32,20 +34,29 @@ typedef struct msg_decoder msg_decoder_t;
 typedef msg_decoder_t *msg_decoder_constructor_t ();
 
 inline int
-msg_decoder_buffer (msg_decoder_t *self, iobuf_t *iobuf)
+msg_decoder_write (
+    msg_decoder_t *self, iobuf_t *iobuf, msg_decoder_info_t *info)
 {
-    return self->ops.buffer (self->object, iobuf);
+    return self->ops.write (self, iobuf, info);
+}
+
+inline uint8_t *
+msg_decoder_buffer (msg_decoder_t *self)
+{
+    return self->ops.buffer (self->object);
 }
 
 inline int
-msg_decoder_decode (
-    msg_decoder_t *self, iobuf_t *iobuf, msg_decoder_result_t *res)
+msg_decoder_advance (msg_decoder_t *self, size_t n, msg_decoder_info_t *info)
 {
-    return self->ops.decode (self->object, iobuf, res);
+    return self->ops.advance (self, n, info);
 }
 
-int
-    msg_decoder_error (msg_decoder_t *self);
+inline frame_t *
+msg_decoder_decode (msg_decoder_t *self, msg_decoder_info_t *info)
+{
+    return self->ops.decode (self->object, info);
+}
 
 void
     msg_decoder_destroy (msg_decoder_t **self_p);

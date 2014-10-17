@@ -18,12 +18,16 @@ struct tcp_session {
     event_handler_t base;
     int fd;
     iobuf_t *iobuf;
-    msg_decoder_t *msg_decoder;
+    msg_decoder_t *decoder;
+    msg_decoder_info_t info;
     uint8_t *buffer;
     size_t buffer_size;
     int event_mask;
     mailbox_t *owner;
 };
+
+static int
+    s_decode (tcp_session_t *self);
 
 tcp_session_t *
 tcp_session_new (int fd, msg_decoder_constructor_t *msg_decoder_constructor, mailbox_t *owner)
@@ -35,17 +39,17 @@ tcp_session_new (int fd, msg_decoder_constructor_t *msg_decoder_constructor, mai
         *self = (tcp_session_t) {
             .fd = fd,
             .iobuf = iobuf_new (buffer, buffer_size),
-            .msg_decoder = msg_decoder_constructor (),
+            .decoder = msg_decoder_constructor (),
             .buffer = buffer,
             .buffer_size = buffer_size,
             .event_mask = 3,
             .owner = owner
         };
-        if (self->iobuf == NULL || self->msg_decoder == NULL || self->buffer == NULL) {
+        if (self->iobuf == NULL || self->decoder == NULL || self->buffer == NULL) {
             if (self->iobuf)
                 iobuf_destroy (&self->iobuf);
-            if (self->msg_decoder)
-                msg_decoder_destroy (&self->msg_decoder);
+            if (self->decoder)
+                msg_decoder_destroy (&self->decoder);
             if (self->buffer)
                 free (self->buffer);
             free (self);
@@ -65,8 +69,8 @@ tcp_session_destroy (tcp_session_t **self_p)
             close (self->fd);
         if (self->iobuf)
             iobuf_destroy (&self->iobuf);
-        if (self->msg_decoder)
-            msg_decoder_destroy (&self->msg_decoder);
+        if (self->decoder)
+            msg_decoder_destroy (&self->decoder);
         if (self->buffer)
             free (self->buffer);
         free (self);
@@ -113,34 +117,13 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     }
 
     if ((flags & ZKERNEL_INPUT_READY) == ZKERNEL_INPUT_READY) {
-        msg_decoder_t *decoder = self->msg_decoder;
-        iobuf_t *iobuf = self->iobuf;
-        int rc = read (self->fd, iobuf->base, iobuf_space (iobuf));
-        while (rc > 0) {
-            iobuf_put (iobuf, (size_t) rc);
-            msg_decoder_result_t res;
-            while (iobuf_available (iobuf) > 0) {
-                const int rc = msg_decoder_decode (decoder, iobuf, &res);
-                // TODO: Handle errors
-                assert (rc == 0);
-                if (res.frame)
-                    mailbox_enqueue (self->owner, (msg_t *) res.frame);
-            }
-            if (res.dba_size >= 128)
-                msg_decoder_buffer (decoder, iobuf);
-            else
-                iobuf_init (iobuf, self->buffer, self->buffer_size);
-
-            rc = read (self->fd, iobuf->base, iobuf_space (iobuf));
-        }
-        if (rc == 0) {
+        const int rc = s_decode (self);
+        if (rc == -1) {
             printf ("tcp_session: Connection closed\n");
             s_send_session_closed (self);
             *fd = -1;
             self->event_mask &= ~1;
         }
-        else
-            assert (errno == EINTR || errno == EAGAIN);
     }
     if ((flags & ZKERNEL_OUTPUT_READY) == ZKERNEL_OUTPUT_READY) {
         ready_to_send_ev_t *ev = ready_to_send_ev_new ();
@@ -170,4 +153,65 @@ tcp_session_send (tcp_session_t *self, const char *data, size_t size)
     if (rc == -1)
         return -1;
     return 0;
+}
+
+static int
+s_decode (tcp_session_t *self)
+{
+    msg_decoder_t *decoder = self->decoder;
+    msg_decoder_info_t *info = &self->info;
+    iobuf_t *iobuf = self->iobuf;
+
+    assert (iobuf_available (iobuf) == 0);
+
+    while (1) {
+        if (info->dba_size >= 256) {
+            uint8_t *buffer = msg_decoder_buffer (decoder);
+            assert (buffer);
+            const int rc = read (self->fd, buffer, info->dba_size);
+            if (rc == 0)
+                goto error;
+            if (rc == -1) {
+                if (errno == EINTR || errno == EAGAIN)
+                    break;
+                else
+                    goto error;
+            }
+            if (msg_decoder_advance (decoder, (size_t) rc, info) != 0)
+                goto error;
+            while (info->ready) {
+                frame_t *frame = msg_decoder_decode (decoder, info);
+                if (frame == NULL)
+                    goto error;
+                mailbox_enqueue (self->owner, (msg_t *) frame);
+            }
+        }
+        else {
+            const ssize_t rc = iobuf_recv (iobuf, self->fd);
+            if (rc == 0)
+                goto error;
+            if (rc == -1) {
+                if (errno == EINTR || errno == EAGAIN)
+                    break;
+                else
+                    goto error;
+            }
+            while (info->ready || iobuf_available (iobuf) > 0) {
+                if (iobuf_available (iobuf) > 0)
+                    if (msg_decoder_write (decoder, iobuf, info) != 0)
+                        goto error;
+                while (info->ready) {
+                    frame_t *frame = msg_decoder_decode (decoder, info);
+                    if (frame == NULL)
+                        goto error;
+                    mailbox_enqueue (self->owner, (msg_t *) frame);
+                }
+            }
+            iobuf_reset (iobuf);
+        }
+    }
+    return 0;
+
+error:
+    return -1;
 }

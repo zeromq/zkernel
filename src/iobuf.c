@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "iobuf.h"
 
@@ -29,6 +31,9 @@ iobuf_destroy (iobuf_t **self_p)
 extern inline void
 iobuf_init (iobuf_t *self, uint8_t *base, size_t size);
 
+extern inline void
+iobuf_reset (iobuf_t *self);
+
 extern inline bool
 iobuf_is_empty (iobuf_t *self);
 
@@ -37,6 +42,15 @@ iobuf_available (iobuf_t *self);
 
 extern inline size_t
 iobuf_space (iobuf_t *self);
+
+ssize_t
+iobuf_recv (iobuf_t *self, int fd)
+{
+    const int rc = recv (fd, self->base, iobuf_space (self), 0);
+    if (rc > 0)
+        self->w += rc;
+    return rc;
+}
 
 extern inline size_t
 iobuf_read (iobuf_t *self, void *ptr, size_t n);
