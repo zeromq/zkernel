@@ -27,7 +27,7 @@ s_new ()
 }
 
 static int
-s_write (void *self_, iobuf_t *iobuf, msg_decoder_info_t *info)
+s_write (void *self_, iobuf_t *iobuf, decoder_info_t *info)
 {
     null_decoder_t *self = (null_decoder_t *) self_;
     assert (self);
@@ -39,7 +39,7 @@ s_write (void *self_, iobuf_t *iobuf, msg_decoder_info_t *info)
     frame->frame_size += iobuf_read (iobuf,
         frame->frame_data, sizeof frame->frame_data - frame->frame_size);
 
-    *info = (msg_decoder_info_t) { .ready = frame->frame_size > 0 };
+    *info = (decoder_info_t) { .ready = frame->frame_size > 0 };
     return 0;
 }
 
@@ -54,7 +54,7 @@ s_buffer (void *self_)
 }
 
 static int
-s_advance (void *self_, size_t n, msg_decoder_info_t *info)
+s_advance (void *self_, size_t n, decoder_info_t *info)
 {
     null_decoder_t *self = (null_decoder_t *) self_;
     assert (self);
@@ -65,12 +65,12 @@ s_advance (void *self_, size_t n, msg_decoder_info_t *info)
 
     assert (frame->frame_size + n <= sizeof frame->frame_data);
     frame->frame_size += n;
-    *info = (msg_decoder_info_t) { .ready = frame->frame_size > 0 };
+    *info = (decoder_info_t) { .ready = frame->frame_size > 0 };
     return 0;
 }
 
 static frame_t *
-s_decode (void *self_, msg_decoder_info_t *info)
+s_decode (void *self_, decoder_info_t *info)
 {
     null_decoder_t *self = (null_decoder_t *) self_;
     assert (self != NULL);
@@ -81,10 +81,10 @@ s_decode (void *self_, msg_decoder_info_t *info)
 
     self->frame = frame_new ();
     if (self->frame)
-        *info = (msg_decoder_info_t) {
+        *info = (decoder_info_t) {
             .dba_size = sizeof self->frame->frame_data };
     else
-        *info = (msg_decoder_info_t) {};
+        *info = (decoder_info_t) {};
 
     return frame;
 }
@@ -100,10 +100,10 @@ s_destroy (void **self_p)
     }
 }
 
-msg_decoder_t *
+decoder_t *
 null_decoder_create_decoder ()
 {
-    static struct msg_decoder_ops ops = {
+    static struct decoder_ops ops = {
         .write = s_write,
         .buffer = s_buffer,
         .advance = s_advance,
@@ -111,9 +111,9 @@ null_decoder_create_decoder ()
         .destroy = s_destroy
     };
 
-    msg_decoder_t *self = (msg_decoder_t *) malloc (sizeof *self);
+    decoder_t *self = (decoder_t *) malloc (sizeof *self);
     if (self) {
-        *self = (msg_decoder_t) { .object = s_new (), .ops = ops };
+        *self = (decoder_t) { .object = s_new (), .ops = ops };
         if (self->object == NULL) {
             free (self);
             self = NULL;

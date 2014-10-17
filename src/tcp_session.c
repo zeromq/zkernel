@@ -12,14 +12,14 @@
 #include "msg.h"
 #include "zkernel.h"
 #include "event_handler.h"
-#include "msg_decoder.h"
+#include "decoder.h"
 
 struct tcp_session {
     event_handler_t base;
     int fd;
     iobuf_t *iobuf;
-    msg_decoder_t *decoder;
-    msg_decoder_info_t info;
+    decoder_t *decoder;
+    decoder_info_t info;
     uint8_t *buffer;
     size_t buffer_size;
     int event_mask;
@@ -30,7 +30,7 @@ static int
     s_decode (tcp_session_t *self);
 
 tcp_session_t *
-tcp_session_new (int fd, msg_decoder_constructor_t *msg_decoder_constructor, mailbox_t *owner)
+tcp_session_new (int fd, decoder_constructor_t *decoder_constructor, mailbox_t *owner)
 {
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self) {
@@ -39,7 +39,7 @@ tcp_session_new (int fd, msg_decoder_constructor_t *msg_decoder_constructor, mai
         *self = (tcp_session_t) {
             .fd = fd,
             .iobuf = iobuf_new (buffer, buffer_size),
-            .decoder = msg_decoder_constructor (),
+            .decoder = decoder_constructor (),
             .buffer = buffer,
             .buffer_size = buffer_size,
             .event_mask = 3,
@@ -49,7 +49,7 @@ tcp_session_new (int fd, msg_decoder_constructor_t *msg_decoder_constructor, mai
             if (self->iobuf)
                 iobuf_destroy (&self->iobuf);
             if (self->decoder)
-                msg_decoder_destroy (&self->decoder);
+                decoder_destroy (&self->decoder);
             if (self->buffer)
                 free (self->buffer);
             free (self);
@@ -70,7 +70,7 @@ tcp_session_destroy (tcp_session_t **self_p)
         if (self->iobuf)
             iobuf_destroy (&self->iobuf);
         if (self->decoder)
-            msg_decoder_destroy (&self->decoder);
+            decoder_destroy (&self->decoder);
         if (self->buffer)
             free (self->buffer);
         free (self);
@@ -158,15 +158,15 @@ tcp_session_send (tcp_session_t *self, const char *data, size_t size)
 static int
 s_decode (tcp_session_t *self)
 {
-    msg_decoder_t *decoder = self->decoder;
-    msg_decoder_info_t *info = &self->info;
+    decoder_t *decoder = self->decoder;
+    decoder_info_t *info = &self->info;
     iobuf_t *iobuf = self->iobuf;
 
     assert (iobuf_available (iobuf) == 0);
 
     while (1) {
         if (info->dba_size >= 256) {
-            uint8_t *buffer = msg_decoder_buffer (decoder);
+            uint8_t *buffer = decoder_buffer (decoder);
             assert (buffer);
             const int rc = read (self->fd, buffer, info->dba_size);
             if (rc == 0)
@@ -177,10 +177,10 @@ s_decode (tcp_session_t *self)
                 else
                     goto error;
             }
-            if (msg_decoder_advance (decoder, (size_t) rc, info) != 0)
+            if (decoder_advance (decoder, (size_t) rc, info) != 0)
                 goto error;
             while (info->ready) {
-                frame_t *frame = msg_decoder_decode (decoder, info);
+                frame_t *frame = decoder_decode (decoder, info);
                 if (frame == NULL)
                     goto error;
                 mailbox_enqueue (self->owner, (msg_t *) frame);
@@ -198,10 +198,10 @@ s_decode (tcp_session_t *self)
             }
             while (info->ready || iobuf_available (iobuf) > 0) {
                 if (iobuf_available (iobuf) > 0)
-                    if (msg_decoder_write (decoder, iobuf, info) != 0)
+                    if (decoder_write (decoder, iobuf, info) != 0)
                         goto error;
                 while (info->ready) {
-                    frame_t *frame = msg_decoder_decode (decoder, info);
+                    frame_t *frame = decoder_decode (decoder, info);
                     if (frame == NULL)
                         goto error;
                     mailbox_enqueue (self->owner, (msg_t *) frame);

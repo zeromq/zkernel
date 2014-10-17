@@ -5,12 +5,12 @@
 
 #include "mailbox.h"
 #include "io_handler.h"
-#include "msg_decoder.h"
+#include "decoder.h"
 
 typedef struct tcp_connector tcp_connector_t;
 
 tcp_connector_t *
-    tcp_connector_new (msg_decoder_constructor_t *decoder_constructor, mailbox_t *owner);
+    tcp_connector_new (decoder_constructor_t *decoder_constructor, mailbox_t *owner);
 
 void
     tcp_connector_destroy (tcp_connector_t **self_p);

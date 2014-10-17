@@ -19,12 +19,12 @@
 struct tcp_listener {
     event_handler_t base;
     int fd;
-    msg_decoder_constructor_t *decoder_constructor;
+    decoder_constructor_t *decoder_constructor;
     mailbox_t *owner;
 };
 
 tcp_listener_t *
-tcp_listener_new (msg_decoder_constructor_t *decoder_constructor, mailbox_t *owner)
+tcp_listener_new (decoder_constructor_t *decoder_constructor, mailbox_t *owner)
 {
     tcp_listener_t *self = malloc (sizeof *self);
     if (self)
