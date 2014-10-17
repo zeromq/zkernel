@@ -3,21 +3,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "null_decoder.h"
+#include "stream_decoder.h"
 #include "frame.h"
 
-struct null_decoder {
+struct stream_decoder {
     frame_t *frame;
 };
 
-typedef struct null_decoder null_decoder_t;
+typedef struct stream_decoder stream_decoder_t;
 
-static null_decoder_t *
+static stream_decoder_t *
 s_new ()
 {
-    null_decoder_t *self = malloc (sizeof *self);
+    stream_decoder_t *self = malloc (sizeof *self);
     if (self) {
-        *self = (null_decoder_t) { .frame = frame_new () };
+        *self = (stream_decoder_t) { .frame = frame_new () };
         if (self->frame == NULL) {
             free (self);
             self = NULL;
@@ -29,7 +29,7 @@ s_new ()
 static int
 s_write (void *self_, iobuf_t *iobuf, decoder_info_t *info)
 {
-    null_decoder_t *self = (null_decoder_t *) self_;
+    stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self);
 
     frame_t *frame = self->frame;
@@ -46,7 +46,7 @@ s_write (void *self_, iobuf_t *iobuf, decoder_info_t *info)
 static uint8_t *
 s_buffer (void *self_)
 {
-    null_decoder_t *self = (null_decoder_t *) self_;
+    stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self);
 
     frame_t *frame = self->frame;
@@ -56,7 +56,7 @@ s_buffer (void *self_)
 static int
 s_advance (void *self_, size_t n, decoder_info_t *info)
 {
-    null_decoder_t *self = (null_decoder_t *) self_;
+    stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self);
 
     frame_t *frame = self->frame;
@@ -72,7 +72,7 @@ s_advance (void *self_, size_t n, decoder_info_t *info)
 static frame_t *
 s_decode (void *self_, decoder_info_t *info)
 {
-    null_decoder_t *self = (null_decoder_t *) self_;
+    stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self != NULL);
 
     frame_t *frame = self->frame;
@@ -94,14 +94,14 @@ s_destroy (void **self_p)
 {
     assert (self_p);
     if (*self_p) {
-        null_decoder_t *self = (null_decoder_t *) *self_p;
+        stream_decoder_t *self = (stream_decoder_t *) *self_p;
         free (self);
         *self_p = NULL;
     }
 }
 
 decoder_t *
-null_decoder_create_decoder ()
+stream_decoder_create_decoder ()
 {
     static struct decoder_ops ops = {
         .write = s_write,
