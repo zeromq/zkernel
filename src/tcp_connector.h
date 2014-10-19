@@ -21,7 +21,7 @@ int
 int
     tcp_connector_errno (tcp_connector_t *self);
 
-struct io_object
+io_object_t *
     tcp_connector_io_object (tcp_connector_t *self);
 
 #endif

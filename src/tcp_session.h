@@ -15,7 +15,7 @@ tcp_session_t *
 void
     tcp_session_destroy (tcp_session_t **self_p);
 
-struct io_object
+io_object_t *
     tcp_session_io_object (tcp_session_t *self);
 
 int

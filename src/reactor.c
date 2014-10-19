@@ -22,7 +22,7 @@ struct event_source {
     int fd;
     uint64_t timer;
     uint32_t event_mask;
-    io_object_t io_object;
+    io_object_t *io_object;
 };
 
 struct timer {
@@ -184,7 +184,7 @@ s_loop (void *udata)
                 int fd = ev_src->fd;
                 uint32_t timer_interval = 0;
                 const int rc = io_object_event (
-                    &ev_src->io_object, flags, &fd, &timer_interval);
+                    ev_src->io_object, flags, &fd, &timer_interval);
                 ev_src->event_mask = 0;
                 s_update_event_source (self, ev_src, fd, rc);
                 if (timer_interval > 0) {
@@ -206,7 +206,7 @@ s_loop (void *udata)
             int fd = ev_src->fd;
             uint32_t timer_interval = 0;
             const int rc = io_object_timeout (
-                &ev_src->io_object, &fd, &timer_interval);
+                ev_src->io_object, &fd, &timer_interval);
             s_update_event_source (self, ev_src, fd, rc);
             if (timer_interval > 0) {
                 timer->t = now + timer_interval;
@@ -242,7 +242,7 @@ s_loop (void *udata)
                 else
                 if (msg->msg_type == ZKERNEL_REGISTER) {
                     struct event_source *ev_src =
-                        s_register (self, &msg->io_object);
+                        s_register (self, msg->io_object);
                     msg->handler_id = ev_src;
                     mailbox_enqueue (&msg->reply_to, msg);
                 }
@@ -279,7 +279,7 @@ s_register (reactor_t *self, io_object_t *io_object)
     struct event_source *ev_src = malloc (sizeof *ev_src);
     if (!ev_src)
         return NULL;
-    *ev_src = (struct event_source) { .fd = -1, .io_object = *io_object };
+    *ev_src = (struct event_source) { .fd = -1, .io_object = io_object };
 
     int fd = -1;
     uint32_t timer_interval = 0;

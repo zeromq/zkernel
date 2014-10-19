@@ -16,6 +16,7 @@
 
 struct tcp_session {
     event_handler_t base;
+    io_object_t io_object;
     int fd;
     iobuf_t *iobuf;
     decoder_t *decoder;
@@ -27,7 +28,18 @@ struct tcp_session {
 };
 
 static int
+    io_init (void *self_, int *fd, uint32_t *timer_interval);
+
+static int
+    io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
+
+static int
     s_decode (tcp_session_t *self);
+
+static struct io_object_ops ops = {
+    .init  = io_init,
+    .event = io_event
+};
 
 tcp_session_t *
 tcp_session_new (int fd, decoder_constructor_t *decoder_constructor, mailbox_t *owner)
@@ -37,6 +49,7 @@ tcp_session_new (int fd, decoder_constructor_t *decoder_constructor, mailbox_t *
         uint8_t *buffer = malloc (4096);
         size_t buffer_size = 4096;
         *self = (tcp_session_t) {
+            .io_object = { .object = self, .ops = ops },
             .fd = fd,
             .iobuf = iobuf_new (buffer, buffer_size),
             .decoder = decoder_constructor (),
@@ -136,14 +149,11 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     return self->event_mask;
 }
 
-struct io_object
+io_object_t *
 tcp_session_io_object (tcp_session_t *self)
 {
-    static struct io_object_ops ops = {
-        .init  = io_init,
-        .event = io_event
-    };
-    return (struct io_object) { .object = self, .ops = ops };
+    assert (self);
+    return &self->io_object;
 }
 
 int

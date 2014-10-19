@@ -10,7 +10,7 @@ struct msg_t {
     int msg_type;
     mailbox_ifc_t reply_to;
     struct msg_t *next;
-    io_object_t io_object;
+    io_object_t *io_object;
     int event_mask;
     void *handler_id;
     void *ptr;

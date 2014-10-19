@@ -19,6 +19,7 @@
 
 struct tcp_connector {
     event_handler_t base;
+    io_object_t io_object;
     struct addrinfo *addrinfo;
     int fd;
     decoder_constructor_t *decoder_constructor;
@@ -26,12 +27,32 @@ struct tcp_connector {
     mailbox_t *owner;
 };
 
+static int
+    io_init (void *self_, int *fd, uint32_t *timer_interval);
+
+static int
+    io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
+
+static int
+    io_timeout (void *self_, int *fd, uint32_t *timer_interval);
+
+static struct io_object_ops ops = {
+    .init  = io_init,
+    .event = io_event,
+    .timeout = io_timeout
+};
+
 tcp_connector_t *
 tcp_connector_new (decoder_constructor_t *decoder_constructor, mailbox_t *owner)
 {
     tcp_connector_t *self = malloc (sizeof *self);
     if (self)
-        *self = (tcp_connector_t) { .fd = -1, .decoder_constructor = decoder_constructor, .owner = owner };
+        *self = (tcp_connector_t) {
+            .io_object = { .object = self, .ops = ops },
+            .fd = -1,
+            .decoder_constructor = decoder_constructor,
+            .owner = owner
+        };
     return self;
 }
 
@@ -183,14 +204,9 @@ io_timeout (void *self_, int *fd, uint32_t *timer_interval)
     }
 }
 
-struct io_object
+io_object_t *
 tcp_connector_io_object (tcp_connector_t *self)
 {
-    static struct io_object_ops ops = {
-        .init  = io_init,
-        .event = io_event,
-        .timeout = io_timeout
-    };
     assert (self);
-    return (struct io_object) { .object = self, .ops = ops };
+    return &self->io_object;
 }
