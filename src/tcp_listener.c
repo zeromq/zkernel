@@ -133,13 +133,13 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     return 1 | 2;
 }
 
-struct io_handler
-tcp_listener_io_handler (tcp_listener_t *self)
+struct io_object
+tcp_listener_io_object (tcp_listener_t *self)
 {
-    static struct io_handler_ops ops = {
+    static struct io_object_ops ops = {
         .init  = io_init,
         .event = io_event
     };
     assert (self);
-    return (struct io_handler) { .object = self, .ops = &ops };
+    return (struct io_object) { .object = self, .ops = ops };
 }

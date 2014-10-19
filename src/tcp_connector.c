@@ -183,14 +183,14 @@ io_timeout (void *self_, int *fd, uint32_t *timer_interval)
     }
 }
 
-struct io_handler
-tcp_connector_io_handler (tcp_connector_t *self)
+struct io_object
+tcp_connector_io_object (tcp_connector_t *self)
 {
-    static struct io_handler_ops ops = {
+    static struct io_object_ops ops = {
         .init  = io_init,
         .event = io_event,
         .timeout = io_timeout
     };
     assert (self);
-    return (struct io_handler) { .object = self, .ops = &ops };
+    return (struct io_object) { .object = self, .ops = ops };
 }

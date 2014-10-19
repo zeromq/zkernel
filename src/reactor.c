@@ -13,7 +13,7 @@
 #include "mailbox.h"
 #include "atomic.h"
 #include "reactor.h"
-#include "io_handler.h"
+#include "io_object.h"
 #include "msg.h"
 #include "clock.h"
 #include "zkernel.h"
@@ -22,7 +22,7 @@ struct event_source {
     int fd;
     uint64_t timer;
     uint32_t event_mask;
-    io_handler_t handler;
+    io_object_t io_object;
 };
 
 struct timer {
@@ -46,7 +46,7 @@ static int
     s_send_msg (void *self_, msg_t *msg);
 
 static struct event_source *
-    s_register (reactor_t *self, io_handler_t *handler);
+    s_register (reactor_t *self, io_object_t *io_object);
 
 static void
     s_remove (reactor_t *self, struct event_source *ev_src);
@@ -183,8 +183,8 @@ s_loop (void *udata)
                     flags |= ZKERNEL_IO_ERROR;
                 int fd = ev_src->fd;
                 uint32_t timer_interval = 0;
-                const int rc = io_handler_event (
-                    &ev_src->handler, flags, &fd, &timer_interval);
+                const int rc = io_object_event (
+                    &ev_src->io_object, flags, &fd, &timer_interval);
                 ev_src->event_mask = 0;
                 s_update_event_source (self, ev_src, fd, rc);
                 if (timer_interval > 0) {
@@ -205,8 +205,8 @@ s_loop (void *udata)
             assert (ev_src);
             int fd = ev_src->fd;
             uint32_t timer_interval = 0;
-            const int rc = io_handler_timeout (
-                &ev_src->handler, &fd, &timer_interval);
+            const int rc = io_object_timeout (
+                &ev_src->io_object, &fd, &timer_interval);
             s_update_event_source (self, ev_src, fd, rc);
             if (timer_interval > 0) {
                 timer->t = now + timer_interval;
@@ -242,7 +242,7 @@ s_loop (void *udata)
                 else
                 if (msg->msg_type == ZKERNEL_REGISTER) {
                     struct event_source *ev_src =
-                        s_register (self, &msg->handler);
+                        s_register (self, &msg->io_object);
                     msg->handler_id = ev_src;
                     mailbox_enqueue (&msg->reply_to, msg);
                 }
@@ -271,20 +271,19 @@ s_loop (void *udata)
     return NULL;
 }
 
-
 static struct event_source *
-s_register (reactor_t *self, io_handler_t *handler)
+s_register (reactor_t *self, io_object_t *io_object)
 {
     assert (self);
 
     struct event_source *ev_src = malloc (sizeof *ev_src);
     if (!ev_src)
         return NULL;
-    *ev_src = (struct event_source) { .fd = -1, .handler = *handler };
+    *ev_src = (struct event_source) { .fd = -1, .io_object = *io_object };
 
     int fd = -1;
     uint32_t timer_interval = 0;
-    const int rc = io_handler_init (handler, &fd, &timer_interval);
+    const int rc = io_object_init (io_object, &fd, &timer_interval);
     s_update_event_source (self, ev_src, fd, rc);
     if (timer_interval > 0) {
         struct timer *timer = s_alloc_timer (self);

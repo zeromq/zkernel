@@ -5,8 +5,6 @@
 
 typedef struct mailbox mailbox_t;
 
-#include "io_handler.h"
-
 struct msg_t;
 
 struct mailbox_ftab {

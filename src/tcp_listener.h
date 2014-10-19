@@ -4,7 +4,7 @@
 #define __TCP_LISTENER_H_INCLUDED__
 
 #include "mailbox.h"
-#include "io_handler.h"
+#include "io_object.h"
 #include "decoder.h"
 
 typedef struct tcp_listener tcp_listener_t;
@@ -18,7 +18,7 @@ void
 int
     tcp_listener_bind (tcp_listener_t *self, unsigned short port);
 
-struct io_handler
-    tcp_listener_io_handler (tcp_listener_t *self);
+struct io_object
+    tcp_listener_io_object (tcp_listener_t *self);
 
 #endif

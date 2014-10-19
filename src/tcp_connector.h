@@ -4,7 +4,7 @@
 #define __TCP_CONNECTOR_H_INCLUDED__
 
 #include "mailbox.h"
-#include "io_handler.h"
+#include "io_object.h"
 #include "decoder.h"
 
 typedef struct tcp_connector tcp_connector_t;
@@ -21,7 +21,7 @@ int
 int
     tcp_connector_errno (tcp_connector_t *self);
 
-struct io_handler
-    tcp_connector_io_handler (tcp_connector_t *self);
+struct io_object
+    tcp_connector_io_object (tcp_connector_t *self);
 
 #endif

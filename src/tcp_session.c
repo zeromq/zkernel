@@ -136,14 +136,14 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     return self->event_mask;
 }
 
-struct io_handler
-tcp_session_io_handler (tcp_session_t *self)
+struct io_object
+tcp_session_io_object (tcp_session_t *self)
 {
-    static struct io_handler_ops ops = {
+    static struct io_object_ops ops = {
         .init  = io_init,
         .event = io_event
     };
-    return (struct io_handler) { .object = self, .ops = &ops };
+    return (struct io_object) { .object = self, .ops = ops };
 }
 
 int

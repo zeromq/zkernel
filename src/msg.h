@@ -4,13 +4,13 @@
 #define __MSG_H_INCLUDED__
 
 #include "mailbox.h"
-#include "io_handler.h"
+#include "io_object.h"
 
 struct msg_t {
     int msg_type;
     mailbox_ifc_t reply_to;
     struct msg_t *next;
-    io_handler_t handler;
+    io_object_t io_object;
     int event_mask;
     void *handler_id;
     void *ptr;
