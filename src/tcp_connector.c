@@ -18,8 +18,7 @@
 #include "event_handler.h"
 
 struct tcp_connector {
-    event_handler_t base;
-    io_object_t io_object;
+    io_object_t base;
     struct addrinfo *addrinfo;
     int fd;
     decoder_constructor_t *decoder_constructor;
@@ -48,7 +47,7 @@ tcp_connector_new (decoder_constructor_t *decoder_constructor, mailbox_t *owner)
     tcp_connector_t *self = malloc (sizeof *self);
     if (self)
         *self = (tcp_connector_t) {
-            .io_object = { .object = self, .ops = ops },
+            .base = { .object = self, .ops = ops },
             .fd = -1,
             .decoder_constructor = decoder_constructor,
             .owner = owner
@@ -208,5 +207,5 @@ io_object_t *
 tcp_connector_io_object (tcp_connector_t *self)
 {
     assert (self);
-    return &self->io_object;
+    return &self->base;
 }
