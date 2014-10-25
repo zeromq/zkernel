@@ -243,13 +243,13 @@ s_loop (void *udata)
                 if (msg->msg_type == ZKERNEL_REGISTER) {
                     struct event_source *ev_src =
                         s_register (self, msg->io_object);
-                    msg->handler_id = ev_src;
+                    msg->io_handle = ev_src;
                     mailbox_enqueue (&msg->reply_to, msg);
                 }
                 else
                 if (msg->msg_type == ZKERNEL_REMOVE) {
                     struct event_source *ev_src =
-                        (struct event_source *) msg->handler_id;
+                        (struct event_source *) msg->io_handle;
                     assert (ev_src);
                     s_remove (self, ev_src);
                     mailbox_enqueue (&msg->reply_to, msg);
@@ -257,7 +257,7 @@ s_loop (void *udata)
                 else
                 if (msg->msg_type == ZKERNEL_ACTIVATE) {
                     struct event_source *ev_src =
-                        (struct event_source *) msg->handler_id;
+                        (struct event_source *) msg->io_handle;
                     assert (ev_src);
                     s_activate (self, ev_src, msg->event_mask);
                 }

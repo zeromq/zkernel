@@ -11,12 +11,10 @@
 #include "tcp_session.h"
 #include "msg.h"
 #include "zkernel.h"
-#include "event_handler.h"
 #include "decoder.h"
 
 struct tcp_session {
-    event_handler_t base;
-    io_object_t io_object;
+    io_object_t base;
     int fd;
     iobuf_t *iobuf;
     decoder_t *decoder;
@@ -49,7 +47,7 @@ tcp_session_new (int fd, decoder_constructor_t *decoder_constructor, mailbox_t *
         uint8_t *buffer = malloc (4096);
         size_t buffer_size = 4096;
         *self = (tcp_session_t) {
-            .io_object = { .object = self, .ops = ops },
+            .base = { .object = self, .ops = ops },
             .fd = fd,
             .iobuf = iobuf_new (buffer, buffer_size),
             .decoder = decoder_constructor (),
@@ -153,7 +151,7 @@ io_object_t *
 tcp_session_io_object (tcp_session_t *self)
 {
     assert (self);
-    return &self->io_object;
+    return &self->base;
 }
 
 int

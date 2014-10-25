@@ -15,7 +15,6 @@
 #include "mailbox.h"
 #include "tcp_connector.h"
 #include "zkernel.h"
-#include "event_handler.h"
 
 struct tcp_connector {
     io_object_t base;

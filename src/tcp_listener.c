@@ -14,11 +14,9 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include "zkernel.h"
-#include "event_handler.h"
 
 struct tcp_listener {
-    event_handler_t base;
-    io_object_t io_object;
+    io_object_t base;
     int fd;
     decoder_constructor_t *decoder_constructor;
     mailbox_t *owner;
@@ -41,7 +39,7 @@ tcp_listener_new (decoder_constructor_t *decoder_constructor, mailbox_t *owner)
     tcp_listener_t *self = malloc (sizeof *self);
     if (self)
         *self = (tcp_listener_t) {
-            .io_object = { .object = self, .ops = ops },
+            .base = { .object = self, .ops = ops },
             .fd = -1,
             .decoder_constructor = decoder_constructor,
             .owner = owner
@@ -144,7 +142,7 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             tcp_session_destroy (&session);
             continue;
         }
-        ev->ptr = session;
+        ev->session = session;
         mailbox_enqueue (self->owner, (msg_t *) ev);
     }
     return 1 | 2;
@@ -154,5 +152,5 @@ io_object_t *
 tcp_listener_io_object (tcp_listener_t *self)
 {
     assert (self);
-    return &self->io_object;
+    return &self->base;
 }

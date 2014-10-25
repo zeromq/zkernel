@@ -11,9 +11,9 @@ struct msg_t {
     mailbox_ifc_t reply_to;
     struct msg_t *next;
     io_object_t *io_object;
+    void *io_handle;
+    void *sk_handle;
     int event_mask;
-    void *handler_id;
-    void *ptr;
 };
 
 typedef struct msg_t msg_t;
@@ -35,7 +35,7 @@ kill_cmd_t *
 
 struct session_event {
     struct msg_t base;
-    void *ptr;
+    void *session;
 };
 
 typedef struct session_event session_event_t;
