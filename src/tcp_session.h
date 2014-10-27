@@ -15,9 +15,6 @@ tcp_session_t *
 void
     tcp_session_destroy (tcp_session_t **self_p);
 
-io_object_t *
-    tcp_session_io_object (tcp_session_t *self);
-
 int
     tcp_session_send (tcp_session_t *self, const char *data, size_t size);
 

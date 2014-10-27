@@ -26,13 +26,13 @@ struct tcp_connector {
 };
 
 static int
-    io_init (void *self_, int *fd, uint32_t *timer_interval);
+    io_init (io_object_t *self_, int *fd, uint32_t *timer_interval);
 
 static int
-    io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
+    io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
 
 static int
-    io_timeout (void *self_, int *fd, uint32_t *timer_interval);
+    io_timeout (io_object_t *self_, int *fd, uint32_t *timer_interval);
 
 static struct io_object_ops ops = {
     .init  = io_init,
@@ -46,7 +46,7 @@ tcp_connector_new (decoder_constructor_t *decoder_constructor, mailbox_t *owner)
     tcp_connector_t *self = malloc (sizeof *self);
     if (self)
         *self = (tcp_connector_t) {
-            .base = { .object = self, .ops = ops },
+            .base.ops = ops,
             .fd = -1,
             .decoder_constructor = decoder_constructor,
             .owner = owner
@@ -132,7 +132,7 @@ tcp_connector_errno (tcp_connector_t *self)
 }
 
 static int
-io_init (void *self_, int *fd, uint32_t *timer_interval)
+io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
 {
     tcp_connector_t *self = (tcp_connector_t *) self_;
     assert (self);
@@ -142,7 +142,7 @@ io_init (void *self_, int *fd, uint32_t *timer_interval)
 }
 
 static int
-io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
+io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
 {
     tcp_connector_t *self = (tcp_connector_t *) self_;
     assert (self);
@@ -167,7 +167,7 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
 }
 
 static int
-io_timeout (void *self_, int *fd, uint32_t *timer_interval)
+io_timeout (io_object_t *self_, int *fd, uint32_t *timer_interval)
 {
     tcp_connector_t *self = (tcp_connector_t *) self_;
     assert (self);
@@ -200,11 +200,4 @@ io_timeout (void *self_, int *fd, uint32_t *timer_interval)
         *timer_interval = 2500;
         return 0;
     }
-}
-
-io_object_t *
-tcp_connector_io_object (tcp_connector_t *self)
-{
-    assert (self);
-    return &self->base;
 }

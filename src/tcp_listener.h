@@ -18,7 +18,4 @@ void
 int
     tcp_listener_bind (tcp_listener_t *self, unsigned short port);
 
-io_object_t *
-    tcp_listener_io_object (tcp_listener_t *self);
-
 #endif

@@ -26,10 +26,10 @@ struct tcp_session {
 };
 
 static int
-    io_init (void *self_, int *fd, uint32_t *timer_interval);
+    io_init (io_object_t *self_, int *fd, uint32_t *timer_interval);
 
 static int
-    io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
+    io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
 
 static int
     s_decode (tcp_session_t *self);
@@ -47,7 +47,7 @@ tcp_session_new (int fd, decoder_constructor_t *decoder_constructor, mailbox_t *
         uint8_t *buffer = malloc (4096);
         size_t buffer_size = 4096;
         *self = (tcp_session_t) {
-            .base = { .object = self, .ops = ops },
+            .base.ops = ops,
             .fd = fd,
             .iobuf = iobuf_new (buffer, buffer_size),
             .decoder = decoder_constructor (),
@@ -99,7 +99,7 @@ s_send_session_closed (tcp_session_t *self)
 }
 
 static int
-io_init (void *self_, int *fd, uint32_t *timer_interval)
+io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
 {
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
@@ -115,7 +115,7 @@ io_init (void *self_, int *fd, uint32_t *timer_interval)
 }
 
 static int
-io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
+io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
 {
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
@@ -145,13 +145,6 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
         return self->event_mask;
     }
     return self->event_mask;
-}
-
-io_object_t *
-tcp_session_io_object (tcp_session_t *self)
-{
-    assert (self);
-    return &self->base;
 }
 
 int

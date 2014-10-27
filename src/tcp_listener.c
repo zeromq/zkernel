@@ -23,10 +23,10 @@ struct tcp_listener {
 };
 
 static int
-    io_init (void *self_, int *fd, uint32_t *timer_interval);
+    io_init (io_object_t *self_, int *fd, uint32_t *timer_interval);
 
 static int
-    io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
+    io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
 
 static struct io_object_ops ops = {
     .init  = io_init,
@@ -39,7 +39,7 @@ tcp_listener_new (decoder_constructor_t *decoder_constructor, mailbox_t *owner)
     tcp_listener_t *self = malloc (sizeof *self);
     if (self)
         *self = (tcp_listener_t) {
-            .base = { .object = self, .ops = ops },
+            .base.ops = ops,
             .fd = -1,
             .decoder_constructor = decoder_constructor,
             .owner = owner
@@ -97,7 +97,7 @@ tcp_listener_bind (tcp_listener_t *self, unsigned short port)
 }
 
 static int
-io_init (void *self_, int *fd, uint32_t *timer_interval)
+io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
 {
     tcp_listener_t *self = (tcp_listener_t *) self_;
     assert (self);
@@ -113,7 +113,7 @@ io_init (void *self_, int *fd, uint32_t *timer_interval)
 }
 
 static int
-io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
+io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
 {
     tcp_listener_t *self = (tcp_listener_t *) self_;
     assert (self);
@@ -146,11 +146,4 @@ io_event (void *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
         mailbox_enqueue (self->owner, (msg_t *) ev);
     }
     return 1 | 2;
-}
-
-io_object_t *
-tcp_listener_io_object (tcp_listener_t *self)
-{
-    assert (self);
-    return &self->base;
 }

@@ -136,7 +136,7 @@ socket_bind (socket_t *self, unsigned short port)
     if (!msg)
         goto fail;
     msg->reply_to = self->mailbox_ifc;
-    msg->io_object = tcp_listener_io_object (listener);
+    msg->io_object = (io_object_t *) listener;
     mailbox_enqueue (&self->reactor, msg);
     return 0;
 
@@ -172,7 +172,7 @@ socket_connect (socket_t *self, unsigned short port)
         return -1;
     }
     msg->reply_to = self->mailbox_ifc;
-    msg->io_object = tcp_connector_io_object (connector);
+    msg->io_object = (io_object_t *) connector;
     mailbox_enqueue (&self->reactor, msg);
     return 0;
 }
@@ -289,7 +289,7 @@ s_new_session (socket_t *self, session_event_t *event)
         }
     msg_t *msg = msg_new (ZKERNEL_REGISTER);
     msg->reply_to = self->mailbox_ifc;
-    msg->io_object = tcp_session_io_object (session);
+    msg->io_object = (io_object_t *) session;
     mailbox_enqueue (&self->reactor, msg);
 }
 
