@@ -11,8 +11,6 @@ struct msg_t {
     mailbox_ifc_t reply_to;
     struct msg_t *next;
     io_object_t *io_object;
-    void *io_handle;
-    void *sk_handle;
     int event_mask;
 };
 

@@ -13,6 +13,7 @@ struct io_object_ops {
 
 struct io_object {
     void *object;
+    void *io_handle;
     struct io_object_ops ops;
 };
 

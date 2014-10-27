@@ -98,7 +98,6 @@ process_msg (socket_t *self, msg_t **msg_p)
         msg_destroy (&msg);
         break;
     case ZKERNEL_REGISTER:
-        assert (msg->io_handle);
         msg_destroy (&msg);
         break;
     case ZKERNEL_REMOVE:
