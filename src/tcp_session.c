@@ -32,11 +32,15 @@ static int
     io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
 
 static int
+    s_message (io_object_t *self_, msg_t *msg);
+
+static int
     s_decode (tcp_session_t *self);
 
 static struct io_object_ops ops = {
     .init  = io_init,
-    .event = io_event
+    .event = io_event,
+    .message = s_message,
 };
 
 tcp_session_t *
@@ -144,6 +148,16 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
         self->event_mask &= ~2;
         return self->event_mask;
     }
+    return self->event_mask;
+}
+
+static int
+s_message (io_object_t *self_, msg_t *msg)
+{
+    tcp_session_t *self = (tcp_session_t *) self_;
+    assert (self);
+
+    msg_destroy (&msg);
     return self->event_mask;
 }
 

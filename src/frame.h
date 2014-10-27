@@ -7,9 +7,11 @@
 
 #include "msg.h"
 
+struct io_object;
+
 struct frame {
     msg_t base;
-    io_object_t *io_object;
+    struct io_object *io_object;
     size_t frame_size;
     uint8_t frame_data [64];
 };

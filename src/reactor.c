@@ -17,6 +17,7 @@
 #include "msg.h"
 #include "clock.h"
 #include "zkernel.h"
+#include "frame.h"
 
 struct event_source {
     int fd;
@@ -235,6 +236,15 @@ s_loop (void *udata)
             msg->next = prev;
             while (msg) {
                 struct msg_t *next_msg = msg->next;
+                if (msg->msg_type == ZKERNEL_MSG_TYPE_FRAME) {
+                    frame_t *frame = (frame_t *) msg;
+                    io_object_t *io_object = frame->io_object;
+                    struct event_source *ev_src =
+                        (struct event_source *) io_object->io_handle;
+                    const int rc = io_object_message (io_object, msg);
+                    s_update_event_source (self, ev_src, ev_src->fd, rc);
+                }
+                else
                 if (msg->msg_type == ZKERNEL_KILL) {
                     msg_destroy (&msg);
                     stop = 1;
