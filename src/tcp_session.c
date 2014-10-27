@@ -184,6 +184,7 @@ s_decode (tcp_session_t *self)
                 frame_t *frame = decoder_decode (decoder, info);
                 if (frame == NULL)
                     goto error;
+                frame->io_object = (io_object_t *) self;
                 mailbox_enqueue (self->owner, (msg_t *) frame);
             }
         }

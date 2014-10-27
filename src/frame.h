@@ -9,6 +9,7 @@
 
 struct frame {
     msg_t base;
+    io_object_t *io_object;
     size_t frame_size;
     uint8_t frame_data [64];
 };
