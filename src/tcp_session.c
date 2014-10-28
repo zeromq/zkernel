@@ -16,6 +16,8 @@
 struct tcp_session {
     io_object_t base;
     int fd;
+    frame_t *queue_head;
+    frame_t *queue_tail;
     iobuf_t *iobuf;
     decoder_t *decoder;
     decoder_info_t info;
@@ -80,6 +82,12 @@ tcp_session_destroy (tcp_session_t **self_p)
     assert (self_p);
     if (*self_p) {
         tcp_session_t *self = *self_p;
+        msg_t *msg = (msg_t *) self->queue_head;
+        while (msg) {
+            msg_t *next = msg->next;
+            msg_destroy (&msg);
+            msg = next;
+        }
         if (self->fd != -1)
             close (self->fd);
         if (self->iobuf)
@@ -157,7 +165,19 @@ s_message (io_object_t *self_, msg_t *msg)
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
 
-    msg_destroy (&msg);
+    if (msg->msg_type == ZKERNEL_MSG_TYPE_FRAME) {
+        frame_t *frame = (frame_t *) msg;
+        if (self->queue_head == NULL)
+            self->queue_head = self->queue_tail = frame;
+        else {
+            self->queue_tail->base.next = (msg_t *) frame;
+            self->queue_tail = frame;
+        }
+        frame->base.next = NULL;
+    }
+    else
+        msg_destroy (&msg);
+
     return self->event_mask;
 }
 
