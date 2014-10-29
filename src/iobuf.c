@@ -40,9 +40,6 @@ iobuf_destroy (iobuf_t **self_p)
 extern inline void
 iobuf_reset (iobuf_t *self);
 
-extern inline bool
-iobuf_is_empty (iobuf_t *self);
-
 extern inline size_t
 iobuf_available (iobuf_t *self);
 

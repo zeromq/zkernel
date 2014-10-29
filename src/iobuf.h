@@ -29,12 +29,6 @@ iobuf_reset (iobuf_t *self)
     self->r = self->w = self->base;
 }
 
-inline bool
-iobuf_is_empty (iobuf_t *self)
-{
-    return self->r == self->w;
-}
-
 inline size_t
 iobuf_available (iobuf_t *self)
 {
