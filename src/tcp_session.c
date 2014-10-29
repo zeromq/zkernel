@@ -88,7 +88,7 @@ tcp_session_destroy (tcp_session_t **self_p)
         if (self->decoder)
             decoder_destroy (&self->decoder);
         if (self->recvbuf)
-            iobuf_destroy (&self->decoder_iobuf);
+            iobuf_destroy (&self->recvbuf);
         free (self);
         *self_p = NULL;
     }
