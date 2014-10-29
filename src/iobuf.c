@@ -44,6 +44,15 @@ extern inline size_t
 iobuf_space (iobuf_t *self);
 
 ssize_t
+iobuf_send (iobuf_t *self, int fd)
+{
+    const ssize_t rc = send (fd, self->r, iobuf_available (self), 0);
+    if (rc > 0)
+        self->r += rc;
+    return rc;
+}
+
+ssize_t
 iobuf_recv (iobuf_t *self, int fd)
 {
     const int rc = recv (fd, self->base, iobuf_space (self), 0);

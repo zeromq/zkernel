@@ -54,6 +54,9 @@ iobuf_space (iobuf_t *self)
 }
 
 ssize_t
+    iobuf_send (iobuf_t *self, int fd);
+
+ssize_t
     iobuf_recv (iobuf_t *self, int fd);
 
 inline size_t
