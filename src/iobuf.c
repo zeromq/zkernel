@@ -55,7 +55,7 @@ iobuf_send (iobuf_t *self, int fd)
 ssize_t
 iobuf_recv (iobuf_t *self, int fd)
 {
-    const int rc = recv (fd, self->base, iobuf_space (self), 0);
+    const ssize_t rc = recv (fd, self->w, iobuf_space (self), 0);
     if (rc > 0)
         self->w += rc;
     return rc;
