@@ -18,16 +18,10 @@ struct iobuf {
 typedef struct iobuf iobuf_t;
 
 iobuf_t *
-    iobuf_new (uint8_t *base, size_t size);
+    iobuf_new (size_t size);
 
 void
     iobuf_destroy (iobuf_t **self_p);
-
-inline void
-iobuf_init (iobuf_t *self, uint8_t *base, size_t size)
-{
-    *self = (iobuf_t) { .base = base, .size = size, .r = base, .w = base };
-}
 
 inline void
 iobuf_reset (iobuf_t *self)

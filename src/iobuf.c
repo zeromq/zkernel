@@ -9,11 +9,19 @@
 #include "iobuf.h"
 
 iobuf_t *
-iobuf_new (uint8_t *data, size_t size)
+iobuf_new (size_t size)
 {
     iobuf_t *self = (iobuf_t *) malloc (sizeof *self);
-    if (self)
-        iobuf_init (self, data, size);
+    if (self) {
+        uint8_t *buf = (uint8_t *) malloc (size);
+        if (buf)
+            *self = (iobuf_t) {
+                .base = buf, .size = size, .r = buf, .w = buf };
+        else {
+            free (self);
+            self = NULL;
+        }
+    }
     return self;
 }
 
@@ -23,13 +31,11 @@ iobuf_destroy (iobuf_t **self_p)
     assert (self_p);
     if (*self_p) {
         iobuf_t *self = *self_p;
+        free (self->base);
         free (self);
         *self_p = NULL;
     }
 }
-
-extern inline void
-iobuf_init (iobuf_t *self, uint8_t *base, size_t size);
 
 extern inline void
 iobuf_reset (iobuf_t *self);

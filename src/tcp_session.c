@@ -21,7 +21,6 @@ struct tcp_session {
     iobuf_t *iobuf;
     decoder_t *decoder;
     decoder_info_t info;
-    uint8_t *buffer;
     size_t buffer_size;
     int event_mask;
     mailbox_t *owner;
@@ -50,25 +49,21 @@ tcp_session_new (int fd, decoder_constructor_t *decoder_constructor, mailbox_t *
 {
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self) {
-        uint8_t *buffer = malloc (4096);
-        size_t buffer_size = 4096;
+        const size_t buffer_size = 4096;
         *self = (tcp_session_t) {
             .base.ops = ops,
             .fd = fd,
-            .iobuf = iobuf_new (buffer, buffer_size),
+            .iobuf = iobuf_new (buffer_size),
             .decoder = decoder_constructor (),
-            .buffer = buffer,
             .buffer_size = buffer_size,
             .event_mask = 3,
             .owner = owner
         };
-        if (self->iobuf == NULL || self->decoder == NULL || self->buffer == NULL) {
+        if (self->iobuf == NULL || self->decoder == NULL) {
             if (self->iobuf)
                 iobuf_destroy (&self->iobuf);
             if (self->decoder)
                 decoder_destroy (&self->decoder);
-            if (self->buffer)
-                free (self->buffer);
             free (self);
             self = NULL;
         }
@@ -94,8 +89,6 @@ tcp_session_destroy (tcp_session_t **self_p)
             iobuf_destroy (&self->iobuf);
         if (self->decoder)
             decoder_destroy (&self->decoder);
-        if (self->buffer)
-            free (self->buffer);
         free (self);
         *self_p = NULL;
     }
