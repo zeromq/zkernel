@@ -5,12 +5,14 @@
 
 #include "mailbox.h"
 #include "io_object.h"
+#include "encoder.h"
 #include "decoder.h"
 
 typedef struct tcp_listener tcp_listener_t;
 
 tcp_listener_t *
-    tcp_listener_new (decoder_constructor_t *decoder_constructor, struct mailbox *owner);
+    tcp_listener_new (encoder_constructor_t *encoder_constructor,
+        decoder_constructor_t *decoder_constructor, struct mailbox *owner);
 
 void
     tcp_listener_destroy (tcp_listener_t **self_p);

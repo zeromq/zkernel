@@ -18,6 +18,7 @@
 struct tcp_listener {
     io_object_t base;
     int fd;
+    encoder_constructor_t *encoder_constructor;
     decoder_constructor_t *decoder_constructor;
     mailbox_t *owner;
 };
@@ -34,13 +35,15 @@ static struct io_object_ops ops = {
 };
 
 tcp_listener_t *
-tcp_listener_new (decoder_constructor_t *decoder_constructor, mailbox_t *owner)
+tcp_listener_new (encoder_constructor_t *encoder_constructor,
+    decoder_constructor_t *decoder_constructor, mailbox_t *owner)
 {
     tcp_listener_t *self = malloc (sizeof *self);
     if (self)
         *self = (tcp_listener_t) {
             .base.ops = ops,
             .fd = -1,
+            .encoder_constructor = encoder_constructor,
             .decoder_constructor = decoder_constructor,
             .owner = owner
         };
@@ -132,7 +135,8 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
         }
         printf ("connection accepted\n");
 
-        tcp_session_t *session = tcp_session_new (rc, self->decoder_constructor, self->owner);
+        tcp_session_t *session = tcp_session_new (
+            rc, self->encoder_constructor, self->decoder_constructor, self->owner);
         if (!session) {
             close (rc);
             continue;

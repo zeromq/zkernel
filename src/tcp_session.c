@@ -7,10 +7,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "tcp_session.h"
 #include "msg.h"
 #include "zkernel.h"
+#include "encoder.h"
 #include "decoder.h"
 
 struct tcp_session {
@@ -18,6 +21,9 @@ struct tcp_session {
     int fd;
     frame_t *queue_head;
     frame_t *queue_tail;
+    encoder_t *encoder;
+    encoder_info_t encoder_info;
+    iobuf_t *sendbuf;
     decoder_t *decoder;
     decoder_info_t info;
     iobuf_t *recvbuf;
@@ -36,6 +42,9 @@ static int
     s_message (io_object_t *self_, msg_t *msg);
 
 static int
+    s_encode (tcp_session_t *self);
+
+static int
     s_decode (tcp_session_t *self);
 
 static struct io_object_ops ops = {
@@ -45,7 +54,8 @@ static struct io_object_ops ops = {
 };
 
 tcp_session_t *
-tcp_session_new (int fd, decoder_constructor_t *decoder_constructor, mailbox_t *owner)
+tcp_session_new (int fd, encoder_constructor_t *encoder_constructor,
+        decoder_constructor_t *decoder_constructor, mailbox_t *owner)
 {
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self) {
@@ -53,13 +63,19 @@ tcp_session_new (int fd, decoder_constructor_t *decoder_constructor, mailbox_t *
         *self = (tcp_session_t) {
             .base.ops = ops,
             .fd = fd,
+            .encoder = encoder_constructor (),
+            .sendbuf = iobuf_new (buffer_size),
             .decoder = decoder_constructor (),
             .recvbuf = iobuf_new (buffer_size),
             .buffer_size = buffer_size,
             .event_mask = 3,
             .owner = owner
         };
-        if (self->decoder == NULL || self->recvbuf == NULL) {
+        if (self->encoder == NULL || self->sendbuf == NULL || self->decoder == NULL || self->recvbuf == NULL) {
+            if (self->encoder)
+                encoder_destroy (&self->encoder);
+            if (self->sendbuf)
+                iobuf_destroy (&self->sendbuf);
             if (self->decoder)
                 decoder_destroy (&self->decoder);
             if (self->recvbuf)
@@ -85,6 +101,10 @@ tcp_session_destroy (tcp_session_t **self_p)
         }
         if (self->fd != -1)
             close (self->fd);
+        if (self->encoder)
+            encoder_destroy (&self->encoder);
+        if (self->sendbuf)
+            iobuf_destroy (&self->sendbuf);
         if (self->decoder)
             decoder_destroy (&self->decoder);
         if (self->recvbuf)
@@ -181,6 +201,65 @@ tcp_session_send (tcp_session_t *self, const char *data, size_t size)
     if (rc == -1)
         return -1;
     return 0;
+}
+
+static int
+s_encode (tcp_session_t *self)
+{
+    encoder_t *encoder = self->encoder;
+    encoder_info_t *info = &self->encoder_info;
+    iobuf_t *sendbuf = self->sendbuf;
+
+    assert (iobuf_available (sendbuf) == 0);
+
+    while (1) {
+        if (info->dba_size >= 256) {
+            const uint8_t *buffer = encoder_buffer (encoder);
+            assert (buffer);
+            const ssize_t rc = send (self->fd, buffer, info->dba_size, 0);
+            if (rc == -1) {
+                if (errno == EAGAIN || errno == EINTR)
+                    break;
+                else
+                    goto error;
+            }
+            if (encoder_advance (encoder, (size_t) rc, info) != 0)
+                goto error;
+        }
+        else {
+            if (encoder_read (encoder, sendbuf, info))
+                goto error;
+            while (iobuf_available (sendbuf)) {
+                const ssize_t rc = iobuf_send (sendbuf, self->fd);
+                if (rc == -1) {
+                    if (errno == EAGAIN || errno == EINTR)
+                        break;
+                    else
+                        goto error;
+                }
+            }
+            if (iobuf_available (sendbuf))
+                break;
+            iobuf_reset (sendbuf);
+        }
+        if (info->ready) {
+            if (self->queue_head) {
+                frame_t *frame = self->queue_head;
+                self->queue_head = (frame_t *) frame->base.next;
+                if (self->queue_head == NULL)
+                    self->queue_tail = NULL;
+                if (encoder_encode (encoder, frame, info) != 0)
+                    goto error;
+            }
+            else
+                break;
+        }
+    }
+    return 0;
+
+error:
+    printf ("error while encoding data\n");
+    return -1;
 }
 
 static int

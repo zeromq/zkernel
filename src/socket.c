@@ -17,6 +17,7 @@
 #include "atomic.h"
 #include "msg.h"
 #include "zkernel.h"
+#include "stream_encoder.h"
 #include "stream_decoder.h"
 
 #define MAX_SESSIONS 8
@@ -126,7 +127,7 @@ int
 socket_bind (socket_t *self, unsigned short port)
 {
     tcp_listener_t *listener =
-        tcp_listener_new (stream_decoder_create_decoder, &self->mailbox_ifc);
+        tcp_listener_new (stream_encoder_create_encoder, stream_decoder_create_decoder, &self->mailbox_ifc);
     if (!listener)
         goto fail;
     int rc = tcp_listener_bind (listener, port);
@@ -152,7 +153,7 @@ socket_connect (socket_t *self, unsigned short port)
     assert (self);
 
     tcp_connector_t *connector =
-        tcp_connector_new (stream_decoder_create_decoder, &self->mailbox_ifc);
+        tcp_connector_new (stream_encoder_create_encoder, stream_decoder_create_decoder, &self->mailbox_ifc);
     if (!connector)
         return -1;
     const int rc = tcp_connector_connect (connector, port);

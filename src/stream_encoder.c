@@ -56,7 +56,7 @@ s_read (void *self_, iobuf_t *iobuf, encoder_info_t *info)
         *info = (encoder_info_t) { .dba_size = self->bytes_left };
     else {
         frame_destroy (&self->frame);
-        *info = (encoder_info_t) { .done = true };
+        *info = (encoder_info_t) { .ready = true };
     }
 
     return 0;
@@ -85,7 +85,7 @@ s_advance (void *self_, size_t n, encoder_info_t *info)
         *info = (encoder_info_t) { .dba_size = self->bytes_left };
     else {
         frame_destroy (&self->frame);
-        *info = (encoder_info_t) { .done = true };
+        *info = (encoder_info_t) { .ready = true };
     }
 
     return 0;

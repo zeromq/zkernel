@@ -10,7 +10,7 @@
 #include "iobuf.h"
 
 struct encoder_info {
-    bool done;
+    bool ready;
     size_t dba_size;
 };
 
