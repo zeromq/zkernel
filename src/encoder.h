@@ -11,6 +11,7 @@
 
 struct encoder_info {
     bool ready;
+    bool has_data;
     size_t dba_size;
 };
 

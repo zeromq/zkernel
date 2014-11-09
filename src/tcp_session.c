@@ -145,31 +145,28 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
 
-    if ((flags & ZKERNEL_IO_ERROR) == ZKERNEL_IO_ERROR) {
-        s_send_session_closed (self);
-        *fd = -1;
-        self->event_mask = 0;
-        return 0;
-    }
-
+    if ((flags & ZKERNEL_IO_ERROR) == ZKERNEL_IO_ERROR)
+        goto error;
     if ((flags & ZKERNEL_INPUT_READY) == ZKERNEL_INPUT_READY) {
         const int rc = s_decode (self);
-        if (rc == -1) {
-            printf ("tcp_session: Connection closed\n");
-            s_send_session_closed (self);
-            *fd = -1;
-            self->event_mask &= ~1;
-        }
+        if (rc == -1)
+            goto error;
     }
     if ((flags & ZKERNEL_OUTPUT_READY) == ZKERNEL_OUTPUT_READY) {
-        ready_to_send_ev_t *ev = ready_to_send_ev_new ();
-        assert (ev);
-        ev->ptr = self;
-        mailbox_enqueue (self->owner, (msg_t *) ev);
-        self->event_mask &= ~2;
-        return self->event_mask;
+        const int rc = s_encode (self);
+        if (rc == -1)
+            goto error;
+        if (!self->encoder_info.has_data)
+            self->event_mask &= ~ZKERNEL_POLLOUT;
     }
     return self->event_mask;
+
+error:
+    printf ("tcp_session: closed\n");
+    s_send_session_closed (self);
+    *fd = -1;
+    self->event_mask = 0;
+    return 0;
 }
 
 static int
@@ -187,6 +184,7 @@ s_message (io_object_t *self_, msg_t *msg)
             self->queue_tail = frame;
         }
         frame->base.next = NULL;
+        self->event_mask |= ZKERNEL_POLLOUT;
     }
     else
         msg_destroy (&msg);
@@ -213,6 +211,23 @@ s_encode (tcp_session_t *self)
     assert (iobuf_available (sendbuf) == 0);
 
     while (1) {
+        while (iobuf_available (sendbuf)) {
+            const ssize_t rc = iobuf_send (sendbuf, self->fd);
+            if (rc == -1) {
+                if (errno == EAGAIN || errno == EINTR)
+                    return 0;
+                else
+                    goto error;
+            }
+        }
+        while (info->ready && self->queue_head) {
+            frame_t *frame = self->queue_head;
+            self->queue_head = (frame_t *) frame->base.next;
+            if (self->queue_head == NULL)
+                self->queue_tail = NULL;
+            if (encoder_encode (encoder, frame, info) != 0)
+                goto error;
+        }
         if (info->dba_size >= 256) {
             const uint8_t *buffer = encoder_buffer (encoder);
             assert (buffer);
@@ -226,34 +241,14 @@ s_encode (tcp_session_t *self)
             if (encoder_advance (encoder, (size_t) rc, info) != 0)
                 goto error;
         }
-        else {
+        else
+        if (info->has_data) {
+            iobuf_reset (sendbuf);
             if (encoder_read (encoder, sendbuf, info))
                 goto error;
-            while (iobuf_available (sendbuf)) {
-                const ssize_t rc = iobuf_send (sendbuf, self->fd);
-                if (rc == -1) {
-                    if (errno == EAGAIN || errno == EINTR)
-                        break;
-                    else
-                        goto error;
-                }
-            }
-            if (iobuf_available (sendbuf))
-                break;
-            iobuf_reset (sendbuf);
         }
-        if (info->ready) {
-            if (self->queue_head) {
-                frame_t *frame = self->queue_head;
-                self->queue_head = (frame_t *) frame->base.next;
-                if (self->queue_head == NULL)
-                    self->queue_tail = NULL;
-                if (encoder_encode (encoder, frame, info) != 0)
-                    goto error;
-            }
-            else
-                break;
-        }
+        else
+            break;
     }
     return 0;
 

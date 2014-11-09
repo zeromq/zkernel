@@ -37,7 +37,10 @@ s_encode (void *self_, frame_t *frame, encoder_info_t *info)
     self->ptr = frame->frame_data;
     self->bytes_left = frame->frame_size;
 
-    *info = (encoder_info_t) { .dba_size = self->bytes_left };
+    *info = (encoder_info_t) {
+        .has_data = self->bytes_left > 0,
+        .dba_size = self->bytes_left };
+
     return 0;
 }
 
@@ -53,7 +56,9 @@ s_read (void *self_, iobuf_t *iobuf, encoder_info_t *info)
     self->bytes_left -= n;
 
     if (self->bytes_left > 0)
-        *info = (encoder_info_t) { .dba_size = self->bytes_left };
+        *info = (encoder_info_t) {
+            .has_data = true,
+            .dba_size = self->bytes_left };
     else {
         frame_destroy (&self->frame);
         *info = (encoder_info_t) { .ready = true };
@@ -82,7 +87,9 @@ s_advance (void *self_, size_t n, encoder_info_t *info)
     self->bytes_left -= n;
 
     if (self->bytes_left > 0)
-        *info = (encoder_info_t) { .dba_size = self->bytes_left };
+        *info = (encoder_info_t) {
+            .has_data = true,
+            .dba_size = self->bytes_left };
     else {
         frame_destroy (&self->frame);
         *info = (encoder_info_t) { .ready = true };
