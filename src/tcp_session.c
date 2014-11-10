@@ -67,7 +67,7 @@ tcp_session_new (int fd, encoder_constructor_t *encoder_constructor,
             .decoder = decoder_constructor (),
             .recvbuf = iobuf_new (buffer_size),
             .buffer_size = buffer_size,
-            .event_mask = 3,
+            .event_mask = ZKERNEL_POLLIN | ZKERNEL_POLLOUT,
             .owner = owner
         };
         if (self->encoder == NULL || self->sendbuf == NULL || self->decoder == NULL || self->recvbuf == NULL) {
