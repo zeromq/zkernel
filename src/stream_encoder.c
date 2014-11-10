@@ -23,6 +23,9 @@ static ssize_t
 static uint8_t *
     s_buffer (encoder_t *base);
 
+static int
+    s_advance (void *base, size_t n);
+
 static void
     s_destroy (encoder_t **base_p);
 
@@ -33,6 +36,7 @@ s_new ()
         .encode = s_encode,
         .read = s_read,
         .buffer = s_buffer,
+        .advance = s_advance,
         .destroy = s_destroy
     };
 
