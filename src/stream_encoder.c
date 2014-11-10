@@ -56,7 +56,6 @@ s_encode (encoder_t *base, frame_t *frame)
     }
 
     self->base.ready = frame->frame_size == 0;
-    self->base.has_data = frame->frame_size > 0;
     self->base.dba_size = frame->frame_size;
     self->frame = frame;
     self->ptr = frame->frame_data;
@@ -77,9 +76,7 @@ s_read (encoder_t *base, iobuf_t *iobuf)
     self->bytes_left -= n;
 
     if (self->bytes_left > 0)
-        self->base = (encoder_t) {
-            .has_data = true,
-            .dba_size = self->bytes_left };
+        self->base = (encoder_t) { .dba_size = self->bytes_left };
     else {
         frame_destroy (&self->frame);
         self->base = (encoder_t) { .ready = true };
@@ -108,9 +105,7 @@ s_advance (void *base, size_t n)
     self->bytes_left -= n;
 
     if (self->bytes_left > 0)
-        self->base = (encoder_t) {
-            .has_data = true,
-            .dba_size = self->bytes_left };
+        self->base = (encoder_t) { .dba_size = self->bytes_left };
     else {
         frame_destroy (&self->frame);
         self->base = (encoder_t) { .ready = true };

@@ -155,7 +155,7 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
         const int rc = s_encode (self);
         if (rc == -1)
             goto error;
-        if (!self->encoder->has_data)
+        if (self->encoder->dba_size == 0 || iobuf_available (self->sendbuf) == 0)
             self->event_mask &= ~ZKERNEL_POLLOUT;
     }
     return self->event_mask;
@@ -206,25 +206,24 @@ s_encode (tcp_session_t *self)
     encoder_t *encoder = self->encoder;
     iobuf_t *sendbuf = self->sendbuf;
 
-    assert (iobuf_available (sendbuf) == 0);
+    while (iobuf_available (sendbuf)) {
+        const ssize_t rc = iobuf_send (sendbuf, self->fd);
+        if (rc == -1) {
+            if (errno == EAGAIN || errno == EINTR)
+                return 0;
+            else
+                return -1;
+        }
+    }
 
     while (1) {
-        while (iobuf_available (sendbuf)) {
-            const ssize_t rc = iobuf_send (sendbuf, self->fd);
-            if (rc == -1) {
-                if (errno == EAGAIN || errno == EINTR)
-                    return 0;
-                else
-                    goto error;
-            }
-        }
         while (encoder->ready && self->queue_head) {
             frame_t *frame = self->queue_head;
             self->queue_head = (frame_t *) frame->base.next;
             if (self->queue_head == NULL)
                 self->queue_tail = NULL;
             if (encoder_encode (encoder, frame) != 0)
-                goto error;
+                return -1;
         }
         if (encoder->dba_size >= 256) {
             const uint8_t *buffer = encoder_buffer (encoder);
@@ -232,27 +231,33 @@ s_encode (tcp_session_t *self)
             const ssize_t rc = send (self->fd, buffer, encoder->dba_size, 0);
             if (rc == -1) {
                 if (errno == EAGAIN || errno == EINTR)
-                    break;
+                    return 0;
                 else
-                    goto error;
+                    return -1;
             }
             if (encoder_advance (encoder, (size_t) rc) != 0)
-                goto error;
+                return -1;
         }
-        else
-        if (encoder->has_data) {
+        else {
             iobuf_reset (sendbuf);
-            if (encoder_read (encoder, sendbuf))
-                goto error;
+            const ssize_t rc = encoder_read (encoder, sendbuf);
+            if (rc == 0)
+                break;
+            if (rc == -1)
+                return -1;
+            while (iobuf_available (sendbuf)) {
+                const ssize_t rc = iobuf_send (sendbuf, self->fd);
+                if (rc == -1) {
+                    if (errno == EAGAIN || errno == EINTR)
+                        return 0;
+                    else
+                        return -1;
+                }
+            }
         }
-        else
-            break;
     }
-    return 0;
 
-error:
-    printf ("error while encoding data\n");
-    return -1;
+    return 0;
 }
 
 static int

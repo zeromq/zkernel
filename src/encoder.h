@@ -21,7 +21,6 @@ struct encoder_ops {
 
 struct encoder {
     bool ready;
-    bool has_data;
     size_t dba_size;
     struct encoder_ops ops;
 };
