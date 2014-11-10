@@ -6,16 +6,16 @@
 #include "encoder.h"
 
 extern inline int
-encoder_encode (encoder_t *self, frame_t *frame, encoder_info_t *info);
+encoder_encode (encoder_t *self, frame_t *frame);
 
 extern inline int
-encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_info_t *info);
+encoder_read (encoder_t *self, iobuf_t *iobuf);
 
 extern inline uint8_t *
 encoder_buffer (encoder_t *self);
 
 extern inline int
-encoder_advance (encoder_t *self, size_t n, encoder_info_t *info);
+encoder_advance (encoder_t *self, size_t n);
 
 void
 encoder_destroy (encoder_t **self_p)
@@ -23,8 +23,6 @@ encoder_destroy (encoder_t **self_p)
     assert (self_p);
     if (*self_p) {
         encoder_t *self = *self_p;
-        self->ops.destroy (&self->object);
-        free (self);
-        *self_p = NULL;
+        self->ops.destroy (self_p);
     }
 }

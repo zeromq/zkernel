@@ -22,7 +22,6 @@ struct tcp_session {
     frame_t *queue_head;
     frame_t *queue_tail;
     encoder_t *encoder;
-    encoder_info_t encoder_info;
     iobuf_t *sendbuf;
     decoder_t *decoder;
     decoder_info_t info;
@@ -156,7 +155,7 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
         const int rc = s_encode (self);
         if (rc == -1)
             goto error;
-        if (!self->encoder_info.has_data)
+        if (!self->encoder->has_data)
             self->event_mask &= ~ZKERNEL_POLLOUT;
     }
     return self->event_mask;
@@ -205,7 +204,6 @@ static int
 s_encode (tcp_session_t *self)
 {
     encoder_t *encoder = self->encoder;
-    encoder_info_t *info = &self->encoder_info;
     iobuf_t *sendbuf = self->sendbuf;
 
     assert (iobuf_available (sendbuf) == 0);
@@ -220,31 +218,31 @@ s_encode (tcp_session_t *self)
                     goto error;
             }
         }
-        while (info->ready && self->queue_head) {
+        while (encoder->ready && self->queue_head) {
             frame_t *frame = self->queue_head;
             self->queue_head = (frame_t *) frame->base.next;
             if (self->queue_head == NULL)
                 self->queue_tail = NULL;
-            if (encoder_encode (encoder, frame, info) != 0)
+            if (encoder_encode (encoder, frame) != 0)
                 goto error;
         }
-        if (info->dba_size >= 256) {
+        if (encoder->dba_size >= 256) {
             const uint8_t *buffer = encoder_buffer (encoder);
             assert (buffer);
-            const ssize_t rc = send (self->fd, buffer, info->dba_size, 0);
+            const ssize_t rc = send (self->fd, buffer, encoder->dba_size, 0);
             if (rc == -1) {
                 if (errno == EAGAIN || errno == EINTR)
                     break;
                 else
                     goto error;
             }
-            if (encoder_advance (encoder, (size_t) rc, info) != 0)
+            if (encoder_advance (encoder, (size_t) rc) != 0)
                 goto error;
         }
         else
-        if (info->has_data) {
+        if (encoder->has_data) {
             iobuf_reset (sendbuf);
-            if (encoder_read (encoder, sendbuf, info))
+            if (encoder_read (encoder, sendbuf))
                 goto error;
         }
         else
