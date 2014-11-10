@@ -8,7 +8,7 @@
 extern inline int
 encoder_encode (encoder_t *self, frame_t *frame);
 
-extern inline int
+extern inline ssize_t
 encoder_read (encoder_t *self, iobuf_t *iobuf);
 
 extern inline uint8_t *

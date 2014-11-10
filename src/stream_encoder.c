@@ -17,7 +17,7 @@ typedef struct stream_encoder stream_encoder_t;
 static int
     s_encode (encoder_t *base, frame_t *frame);
 
-static int
+static ssize_t
     s_read (encoder_t *base, iobuf_t *iobuf);
 
 static uint8_t *
@@ -64,7 +64,7 @@ s_encode (encoder_t *base, frame_t *frame)
     return 0;
 }
 
-static int
+static ssize_t
 s_read (encoder_t *base, iobuf_t *iobuf)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
@@ -82,7 +82,7 @@ s_read (encoder_t *base, iobuf_t *iobuf)
         self->base = (encoder_t) { .ready = true };
     }
 
-    return 0;
+    return (ssize_t) n;
 }
 
 static uint8_t *

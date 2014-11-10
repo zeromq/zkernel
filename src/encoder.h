@@ -13,7 +13,7 @@ struct encoder;
 
 struct encoder_ops {
     int (*encode) (struct encoder *self, frame_t *frame);
-    int (*read) (struct encoder *self, iobuf_t *iobuf);
+    ssize_t (*read) (struct encoder *self, iobuf_t *iobuf);
     uint8_t *(*buffer) (struct encoder *self);
     int (*advance) (struct encoder *self, size_t n);
     void (*destroy) (struct encoder **self_p);
@@ -35,7 +35,7 @@ encoder_encode (encoder_t *self, frame_t *frame)
     return self->ops.encode (self, frame);
 }
 
-inline int
+inline ssize_t
 encoder_read (encoder_t *self, iobuf_t *iobuf)
 {
     return self->ops.read (self, iobuf);
