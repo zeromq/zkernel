@@ -9,19 +9,25 @@
 #include "frame.h"
 #include "iobuf.h"
 
+struct encoder_info {
+    bool ready;
+    size_t dba_size;
+};
+
+typedef struct encoder_info encoder_info_t;
+
 struct encoder;
 
 struct encoder_ops {
-    int (*encode) (struct encoder *self, frame_t *frame);
-    ssize_t (*read) (struct encoder *self, iobuf_t *iobuf);
+    int (*init ) (struct encoder *self, encoder_info_t *info);
+    int (*encode) (struct encoder *self, frame_t *frame, encoder_info_t *info);
+    int (*read) (struct encoder *self, iobuf_t *iobuf, encoder_info_t *info);
     uint8_t *(*buffer) (struct encoder *self);
-    int (*advance) (struct encoder *self, size_t n);
+    int (*advance) (struct encoder *self, size_t n, encoder_info_t *info);
     void (*destroy) (struct encoder **self_p);
 };
 
 struct encoder {
-    bool ready;
-    size_t dba_size;
     struct encoder_ops ops;
 };
 
@@ -30,15 +36,21 @@ typedef struct encoder encoder_t;
 typedef encoder_t *encoder_constructor_t ();
 
 inline int
-encoder_encode (encoder_t *self, frame_t *frame)
+encoder_init (encoder_t *self, encoder_info_t *info)
 {
-    return self->ops.encode (self, frame);
+    return self->ops.init (self, info);
 }
 
-inline ssize_t
-encoder_read (encoder_t *self, iobuf_t *iobuf)
+inline int
+encoder_encode (encoder_t *self, frame_t *frame, encoder_info_t *info)
 {
-    return self->ops.read (self, iobuf);
+    return self->ops.encode (self, frame, info);
+}
+
+inline int
+encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_info_t *info)
+{
+    return self->ops.read (self, iobuf, info);
 }
 
 inline uint8_t *
@@ -48,9 +60,9 @@ encoder_buffer (encoder_t *self)
 }
 
 inline int
-encoder_advance (encoder_t *self, size_t n)
+encoder_advance (encoder_t *self, size_t n, encoder_info_t *info)
 {
-    return self->ops.advance (self, n);
+    return self->ops.advance (self, n, info);
 }
 
 void

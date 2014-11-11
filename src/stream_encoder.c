@@ -15,16 +15,19 @@ struct stream_encoder {
 typedef struct stream_encoder stream_encoder_t;
 
 static int
-    s_encode (encoder_t *base, frame_t *frame);
+    s_init (encoder_t *base, encoder_info_t *info);
 
-static ssize_t
-    s_read (encoder_t *base, iobuf_t *iobuf);
+static int
+    s_encode (encoder_t *base, frame_t *frame, encoder_info_t *info);
+
+static int
+    s_read (encoder_t *base, iobuf_t *iobuf, encoder_info_t *info);
 
 static uint8_t *
     s_buffer (encoder_t *base);
 
 static int
-    s_advance (void *base, size_t n);
+    s_advance (encoder_t *base, size_t n, encoder_info_t *info);
 
 static void
     s_destroy (encoder_t **base_p);
@@ -33,6 +36,7 @@ static stream_encoder_t *
 s_new ()
 {
     static struct encoder_ops ops = {
+        .init = s_init,
         .encode = s_encode,
         .read = s_read,
         .buffer = s_buffer,
@@ -43,13 +47,20 @@ s_new ()
     stream_encoder_t *self = malloc (sizeof *self);
     if (self)
         *self = (stream_encoder_t) {
-            .base = (encoder_t) { .ready = true, .ops = ops }
+            .base = (encoder_t) { .ops = ops }
         };
     return self;
 }
 
 static int
-s_encode (encoder_t *base, frame_t *frame)
+s_init (encoder_t *base, encoder_info_t *info)
+{
+    *info = (encoder_info_t) { .ready = true };
+    return 0;
+}
+
+static int
+s_encode (encoder_t *base, frame_t *frame, encoder_info_t *info)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
@@ -59,17 +70,20 @@ s_encode (encoder_t *base, frame_t *frame)
         frame_destroy (&self->frame);
     }
 
-    self->base.ready = frame->frame_size == 0;
-    self->base.dba_size = frame->frame_size;
     self->frame = frame;
     self->ptr = frame->frame_data;
     self->bytes_left = frame->frame_size;
 
+    *info = (encoder_info_t) {
+        .ready = frame->frame_size == 0,
+        .dba_size = frame->frame_size
+    };
+
     return 0;
 }
 
-static ssize_t
-s_read (encoder_t *base, iobuf_t *iobuf)
+static int
+s_read (encoder_t *base, iobuf_t *iobuf, encoder_info_t *info)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
@@ -80,13 +94,13 @@ s_read (encoder_t *base, iobuf_t *iobuf)
     self->bytes_left -= n;
 
     if (self->bytes_left > 0)
-        self->base = (encoder_t) { .dba_size = self->bytes_left };
+        *info = (encoder_info_t) { .dba_size = self->bytes_left };
     else {
         frame_destroy (&self->frame);
-        self->base = (encoder_t) { .ready = true };
+        *info = (encoder_info_t) { .ready = true };
     }
 
-    return (ssize_t) n;
+    return 0;
 }
 
 static uint8_t *
@@ -99,7 +113,7 @@ s_buffer (encoder_t *base)
 }
 
 static int
-s_advance (void *base, size_t n)
+s_advance (encoder_t *base, size_t n, encoder_info_t *info)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
@@ -109,10 +123,10 @@ s_advance (void *base, size_t n)
     self->bytes_left -= n;
 
     if (self->bytes_left > 0)
-        self->base = (encoder_t) { .dba_size = self->bytes_left };
+        *info = (encoder_info_t) { .dba_size = self->bytes_left };
     else {
         frame_destroy (&self->frame);
-        self->base = (encoder_t) { .ready = true };
+        *info = (encoder_info_t) { .ready = true };
     }
 
     return 0;

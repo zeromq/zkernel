@@ -22,6 +22,7 @@ struct tcp_session {
     frame_t *queue_head;
     frame_t *queue_tail;
     encoder_t *encoder;
+    encoder_info_t encoder_info;
     iobuf_t *sendbuf;
     decoder_t *decoder;
     decoder_info_t info;
@@ -70,6 +71,11 @@ tcp_session_new (int fd, encoder_constructor_t *encoder_constructor,
             .event_mask = ZKERNEL_POLLIN | ZKERNEL_POLLOUT,
             .owner = owner
         };
+        if (self->encoder) {
+            const int rc = encoder_init (self->encoder, &self->encoder_info);
+            if (rc == -1)
+                encoder_destroy (&self->encoder);
+        }
         if (self->encoder == NULL || self->sendbuf == NULL || self->decoder == NULL || self->recvbuf == NULL) {
             if (self->encoder)
                 encoder_destroy (&self->encoder);
@@ -152,10 +158,11 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             goto error;
     }
     if ((flags & ZKERNEL_OUTPUT_READY) == ZKERNEL_OUTPUT_READY) {
+        encoder_info_t *info = &self->encoder_info;
         const int rc = s_encode (self);
         if (rc == -1)
             goto error;
-        if (self->encoder->dba_size == 0 || iobuf_available (self->sendbuf) == 0)
+        if (info->dba_size == 0 || iobuf_available (self->sendbuf) == 0)
             self->event_mask &= ~ZKERNEL_POLLOUT;
     }
     return self->event_mask;
@@ -204,6 +211,7 @@ static int
 s_encode (tcp_session_t *self)
 {
     encoder_t *encoder = self->encoder;
+    encoder_info_t *info = &self->encoder_info;
     iobuf_t *sendbuf = self->sendbuf;
 
     while (iobuf_available (sendbuf)) {
@@ -216,33 +224,34 @@ s_encode (tcp_session_t *self)
         }
     }
 
-    while (1) {
-        while (encoder->ready && self->queue_head) {
+    while (info->dba_size > 0
+        || iobuf_available (sendbuf) > 0
+        || info->ready && self->queue_head)
+    {
+        while (info->ready && self->queue_head) {
             frame_t *frame = self->queue_head;
             self->queue_head = (frame_t *) frame->base.next;
             if (self->queue_head == NULL)
                 self->queue_tail = NULL;
-            if (encoder_encode (encoder, frame) != 0)
+            if (encoder_encode (encoder, frame, info) != 0)
                 return -1;
         }
-        if (encoder->dba_size >= 256) {
+        if (info->dba_size >= 256) {
             const uint8_t *buffer = encoder_buffer (encoder);
             assert (buffer);
-            const ssize_t rc = send (self->fd, buffer, encoder->dba_size, 0);
+            const ssize_t rc = send (self->fd, buffer, info->dba_size, 0);
             if (rc == -1) {
                 if (errno == EAGAIN || errno == EINTR)
                     return 0;
                 else
                     return -1;
             }
-            if (encoder_advance (encoder, (size_t) rc) != 0)
+            if (encoder_advance (encoder, (size_t) rc, info) != 0)
                 return -1;
         }
         else {
             iobuf_reset (sendbuf);
-            const ssize_t rc = encoder_read (encoder, sendbuf);
-            if (rc == 0)
-                break;
+            const int rc = encoder_read (encoder, sendbuf, info);
             if (rc == -1)
                 return -1;
             while (iobuf_available (sendbuf)) {
@@ -273,7 +282,7 @@ s_decode (tcp_session_t *self)
         if (info->dba_size >= 256) {
             uint8_t *buffer = decoder_buffer (decoder);
             assert (buffer);
-            const int rc = read (self->fd, buffer, info->dba_size);
+            const ssize_t rc = recv (self->fd, buffer, info->dba_size, 0);
             if (rc == 0)
                 goto error;
             if (rc == -1) {
