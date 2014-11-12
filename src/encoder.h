@@ -3,7 +3,6 @@
 #ifndef __ENCODER_H_INCLUDED__
 #define __ENCODER_H_INCLUDED__
 
-#include <stdint.h>
 #include <stdbool.h>
 
 #include "frame.h"
@@ -22,7 +21,7 @@ struct encoder_ops {
     int (*init ) (struct encoder *self, encoder_info_t *info);
     int (*encode) (struct encoder *self, frame_t *frame, encoder_info_t *info);
     int (*read) (struct encoder *self, iobuf_t *iobuf, encoder_info_t *info);
-    uint8_t *(*buffer) (struct encoder *self);
+    const void *(*buffer) (struct encoder *self);
     int (*advance) (struct encoder *self, size_t n, encoder_info_t *info);
     void (*destroy) (struct encoder **self_p);
 };
@@ -53,7 +52,7 @@ encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_info_t *info)
     return self->ops.read (self, iobuf, info);
 }
 
-inline uint8_t *
+inline const void *
 encoder_buffer (encoder_t *self)
 {
     return self->ops.buffer (self);

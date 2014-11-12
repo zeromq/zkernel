@@ -6,9 +6,12 @@
 #include "decoder.h"
 
 extern inline int
+decoder_init (decoder_t *self, decoder_info_t *info);
+
+extern inline int
 decoder_write (decoder_t *self, iobuf_t *iobuf, decoder_info_t *info);
 
-extern inline uint8_t *
+extern inline void *
 decoder_buffer (decoder_t *self);
 
 extern inline int

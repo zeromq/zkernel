@@ -27,6 +27,13 @@ s_new ()
 }
 
 static int
+s_init (void *self_, decoder_info_t *info)
+{
+    *info = (decoder_info_t) { .ready = true };
+    return 0;
+}
+
+static int
 s_write (void *self_, iobuf_t *iobuf, decoder_info_t *info)
 {
     stream_decoder_t *self = (stream_decoder_t *) self_;
@@ -39,11 +46,15 @@ s_write (void *self_, iobuf_t *iobuf, decoder_info_t *info)
     frame->frame_size += iobuf_read (iobuf,
         frame->frame_data, sizeof frame->frame_data - frame->frame_size);
 
-    *info = (decoder_info_t) { .ready = frame->frame_size > 0 };
+    *info = (decoder_info_t) {
+        .ready = frame->frame_size > 0,
+        .dba_size = sizeof frame->frame_data - frame->frame_size
+    };
+
     return 0;
 }
 
-static uint8_t *
+static void *
 s_buffer (void *self_)
 {
     stream_decoder_t *self = (stream_decoder_t *) self_;
@@ -104,6 +115,7 @@ decoder_t *
 stream_decoder_create_decoder ()
 {
     static struct decoder_ops ops = {
+        .init = s_init,
         .write = s_write,
         .buffer = s_buffer,
         .advance = s_advance,

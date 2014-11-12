@@ -4,7 +4,6 @@
 #define __DECODER_H_INCLUDED__
 
 #include <stdbool.h>
-#include <stdint.h>
 
 #include "iobuf.h"
 #include "frame.h"
@@ -17,8 +16,9 @@ struct decoder_info {
 typedef struct decoder_info decoder_info_t;
 
 struct decoder_ops {
+    int (*init) (void *self, decoder_info_t *info);
     int (*write) (void *self, iobuf_t *iobuf, decoder_info_t *info);
-    uint8_t *(*buffer) (void *self);
+    void *(*buffer) (void *self);
     int (*advance) (void *self, size_t n, decoder_info_t *info);
     frame_t *(*decode) (void *self, decoder_info_t *info);
     void (*destroy) (void **self_p);
@@ -34,12 +34,18 @@ typedef struct decoder decoder_t;
 typedef decoder_t *decoder_constructor_t ();
 
 inline int
-decoder_write (decoder_t *self, iobuf_t *iobuf, decoder_info_t *info)
+decoder_init (decoder_t *self, decoder_info_t *info)
 {
-    return self->ops.write (self, iobuf, info);
+    return self->ops.init (self->object, info);
 }
 
-inline uint8_t *
+inline int
+decoder_write (decoder_t *self, iobuf_t *iobuf, decoder_info_t *info)
+{
+    return self->ops.write (self->object, iobuf, info);
+}
+
+inline void *
 decoder_buffer (decoder_t *self)
 {
     return self->ops.buffer (self->object);
@@ -48,7 +54,7 @@ decoder_buffer (decoder_t *self)
 inline int
 decoder_advance (decoder_t *self, size_t n, decoder_info_t *info)
 {
-    return self->ops.advance (self, n, info);
+    return self->ops.advance (self->object, n, info);
 }
 
 inline frame_t *

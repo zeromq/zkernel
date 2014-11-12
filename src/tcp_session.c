@@ -76,6 +76,11 @@ tcp_session_new (int fd, encoder_constructor_t *encoder_constructor,
             if (rc == -1)
                 encoder_destroy (&self->encoder);
         }
+        if (self->decoder) {
+            const int rc = decoder_init (self->decoder, &self->info);
+            if (rc == -1)
+                decoder_destroy (&self->decoder);
+        }
         if (self->encoder == NULL || self->sendbuf == NULL || self->decoder == NULL || self->recvbuf == NULL) {
             if (self->encoder)
                 encoder_destroy (&self->encoder);
@@ -237,7 +242,7 @@ s_encode (tcp_session_t *self)
                 return -1;
         }
         if (info->dba_size >= 256) {
-            const uint8_t *buffer = encoder_buffer (encoder);
+            const void *buffer = encoder_buffer (encoder);
             assert (buffer);
             const ssize_t rc = send (self->fd, buffer, info->dba_size, 0);
             if (rc == -1) {
@@ -276,11 +281,22 @@ s_decode (tcp_session_t *self)
     decoder_info_t *info = &self->info;
     iobuf_t *recvbuf = self->recvbuf;
 
-    assert (iobuf_available (recvbuf) == 0);
-
     while (1) {
+        while (info->ready) {
+            frame_t *frame = decoder_decode (decoder, info);
+            if (frame == NULL)
+                goto error;
+            frame->io_object = (io_object_t *) self;
+            mailbox_enqueue (self->owner, (msg_t *) frame);
+        }
+
+        if (iobuf_available (recvbuf)) {
+            if (decoder_write (decoder, recvbuf, info) != 0)
+                goto error;
+        }
+        else
         if (info->dba_size >= 256) {
-            uint8_t *buffer = decoder_buffer (decoder);
+            void *buffer = decoder_buffer (decoder);
             assert (buffer);
             const ssize_t rc = recv (self->fd, buffer, info->dba_size, 0);
             if (rc == 0)
@@ -293,15 +309,9 @@ s_decode (tcp_session_t *self)
             }
             if (decoder_advance (decoder, (size_t) rc, info) != 0)
                 goto error;
-            while (info->ready) {
-                frame_t *frame = decoder_decode (decoder, info);
-                if (frame == NULL)
-                    goto error;
-                frame->io_object = (io_object_t *) self;
-                mailbox_enqueue (self->owner, (msg_t *) frame);
-            }
         }
         else {
+            iobuf_reset (recvbuf);
             const ssize_t rc = iobuf_recv (recvbuf, self->fd);
             if (rc == 0)
                 goto error;
@@ -311,19 +321,8 @@ s_decode (tcp_session_t *self)
                 else
                     goto error;
             }
-            while (info->ready || iobuf_available (recvbuf) > 0) {
-                if (iobuf_available (recvbuf) > 0)
-                    if (decoder_write (decoder, recvbuf, info) != 0)
-                        goto error;
-                while (info->ready) {
-                    frame_t *frame = decoder_decode (decoder, info);
-                    if (frame == NULL)
-                        goto error;
-                    frame->io_object = (io_object_t *) self;
-                    mailbox_enqueue (self->owner, (msg_t *) frame);
-                }
-            }
-            iobuf_reset (recvbuf);
+            if (decoder_write (decoder, recvbuf, info) != 0)
+                goto error;
         }
     }
     return 0;

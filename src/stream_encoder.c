@@ -23,7 +23,7 @@ static int
 static int
     s_read (encoder_t *base, iobuf_t *iobuf, encoder_info_t *info);
 
-static uint8_t *
+static const void *
     s_buffer (encoder_t *base);
 
 static int
@@ -103,7 +103,7 @@ s_read (encoder_t *base, iobuf_t *iobuf, encoder_info_t *info)
     return 0;
 }
 
-static uint8_t *
+static const void *
 s_buffer (encoder_t *base)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
