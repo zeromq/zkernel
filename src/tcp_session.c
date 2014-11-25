@@ -29,7 +29,6 @@ struct tcp_session {
     decoder_t *decoder;
     decoder_info_t info;
     iobuf_t *recvbuf;
-    size_t buffer_size;
     int event_mask;
     mailbox_t *owner;
 };
@@ -69,7 +68,6 @@ tcp_session_new (int fd, encoder_constructor_t *encoder_constructor,
             .sendbuf = iobuf_new (buffer_size),
             .decoder = decoder_constructor (),
             .recvbuf = iobuf_new (buffer_size),
-            .buffer_size = buffer_size,
             .event_mask = ZKERNEL_POLLIN | ZKERNEL_POLLOUT,
             .owner = owner
         };
