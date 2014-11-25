@@ -150,7 +150,7 @@ io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
 }
 
 static int
-s_handshake(io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
+s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
 {
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
@@ -171,6 +171,11 @@ s_handshake(io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interva
         }
     }
 
+    const int rc = selector_handshake (
+        self->selector, self->recvbuf, self->sendbuf);
+    if (rc == -1)
+        goto error;
+
     if ((flags & ZKERNEL_OUTPUT_READY) == ZKERNEL_OUTPUT_READY) {
         const ssize_t rc = iobuf_send (self->sendbuf, self->fd);
         if (rc == -1)
@@ -179,11 +184,6 @@ s_handshake(io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interva
         if (iobuf_available (self->sendbuf) == 0)
             iobuf_reset (self->sendbuf);
     }
-
-    const int rc = selector_handshake (
-        self->selector, self->recvbuf, self->sendbuf);
-    if (rc == -1)
-        goto error;
 
     if (iobuf_space (self->recvbuf) == 0)
         self->event_mask &= ~ZKERNEL_POLLIN;
