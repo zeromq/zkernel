@@ -13,6 +13,7 @@
 #include "tcp_session.h"
 #include "msg.h"
 #include "zkernel.h"
+#include "selector.h"
 #include "encoder.h"
 #include "decoder.h"
 
@@ -21,6 +22,7 @@ struct tcp_session {
     int fd;
     frame_t *queue_head;
     frame_t *queue_tail;
+    selector_t *selector;
     encoder_t *encoder;
     encoder_info_t encoder_info;
     iobuf_t *sendbuf;
@@ -147,6 +149,67 @@ io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
 
     *fd = self->fd;
     return self->event_mask;
+}
+
+static int
+s_handshake(io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
+{
+    tcp_session_t *self = (tcp_session_t *) self_;
+    assert (self);
+
+    if ((flags & ZKERNEL_IO_ERROR) == ZKERNEL_IO_ERROR)
+        goto error;
+
+    if ((flags & ZKERNEL_INPUT_READY) == ZKERNEL_INPUT_READY) {
+        if (iobuf_available (self->recvbuf) == 0)
+            iobuf_reset (self->recvbuf);
+
+        if (iobuf_space (self->recvbuf) > 0) {
+            const ssize_t rc = iobuf_recv (self->recvbuf, self->fd);
+            if (rc == 0)
+                goto error;
+            if (rc == -1 && (errno != EAGAIN && errno != EINTR))
+                goto error;
+        }
+    }
+
+    if ((flags & ZKERNEL_OUTPUT_READY) == ZKERNEL_OUTPUT_READY) {
+        const ssize_t rc = iobuf_send (self->sendbuf, self->fd);
+        if (rc == -1)
+            goto error;
+
+        if (iobuf_available (self->sendbuf) == 0)
+            iobuf_reset (self->sendbuf);
+    }
+
+    const int rc = selector_handshake (
+        self->selector, self->recvbuf, self->sendbuf);
+    if (rc == -1)
+        goto error;
+
+    if (iobuf_space (self->recvbuf) == 0)
+        self->event_mask &= ~ZKERNEL_POLLIN;
+
+    if (iobuf_available (self->sendbuf) == 0)
+        self->event_mask &= ~ZKERNEL_POLLOUT;
+
+    if (!selector_in_handshake (self->selector)) {
+        const int rc = selector_select (
+            self->selector, &self->encoder, &self->decoder);
+        if (rc == -1)
+            goto error;
+        self->base.ops.event = io_event;
+        self->event_mask = ZKERNEL_POLLIN | ZKERNEL_POLLOUT;
+    }
+
+    return self->event_mask;
+
+error:
+    printf ("tcp_session: closed\n");
+    s_send_session_closed (self);
+    *fd = -1;
+    self->event_mask = 0;
+    return 0;
 }
 
 static int
