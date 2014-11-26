@@ -13,12 +13,12 @@
 #include "tcp_connector.h"
 #include "tcp_session.h"
 #include "mailbox.h"
+#include "io_object.h"
 #include "socket.h"
 #include "atomic.h"
 #include "msg.h"
 #include "zkernel.h"
-#include "stream_encoder.h"
-#include "stream_decoder.h"
+#include "selector.h"
 
 #define MAX_SESSIONS 8
 
@@ -124,10 +124,10 @@ process_msg (socket_t *self, msg_t **msg_p)
 }
 
 int
-socket_bind (socket_t *self, unsigned short port)
+socket_bind (socket_t *self, unsigned short port, selector_t *selector)
 {
     tcp_listener_t *listener =
-        tcp_listener_new (stream_encoder_create_encoder, stream_decoder_create_decoder, &self->mailbox_ifc);
+        tcp_listener_new (selector, &self->mailbox_ifc);
     if (!listener)
         goto fail;
     int rc = tcp_listener_bind (listener, port);
@@ -148,12 +148,12 @@ fail:
 }
 
 int
-socket_connect (socket_t *self, unsigned short port)
+socket_connect (socket_t *self, unsigned short port, selector_t *selector)
 {
     assert (self);
 
     tcp_connector_t *connector =
-        tcp_connector_new (stream_encoder_create_encoder, stream_decoder_create_decoder, &self->mailbox_ifc);
+        tcp_connector_new (selector, &self->mailbox_ifc);
     if (!connector)
         return -1;
     const int rc = tcp_connector_connect (connector, port);

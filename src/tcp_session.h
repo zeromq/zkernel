@@ -4,15 +4,12 @@
 #define __TCP_SESSION_H_INCLUDED__
 
 #include "mailbox.h"
-#include "io_object.h"
-#include "encoder.h"
-#include "decoder.h"
+#include "selector.h"
 
 typedef struct tcp_session tcp_session_t;
 
 tcp_session_t *
-    tcp_session_new (int fd, encoder_constructor_t *encoder_constructor,
-        decoder_constructor_t *decoder_constructor, mailbox_t *owner);
+    tcp_session_new (int fd, selector_t *selector, mailbox_t *owner);
 
 void
     tcp_session_destroy (tcp_session_t **self_p);

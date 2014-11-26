@@ -26,11 +26,20 @@ s_new ()
     return self;
 }
 
-static int
-s_init (void *self_, decoder_info_t *info)
+static void
+s_info (void *self_, decoder_info_t *info)
 {
-    *info = (decoder_info_t) { .ready = true };
-    return 0;
+    stream_decoder_t *self = (stream_decoder_t *) self_;
+    assert (self);
+
+    frame_t *frame = self->frame;
+    if (frame)
+        *info = (decoder_info_t) {
+            .ready = frame->frame_size > 0,
+            .dba_size = sizeof frame->frame_data - frame->frame_size
+        };
+    else
+        *info = (decoder_info_t) { .ready = false, .dba_size = 0 };
 }
 
 static int
@@ -115,7 +124,7 @@ decoder_t *
 stream_decoder_create_decoder ()
 {
     static struct decoder_ops ops = {
-        .init = s_init,
+        .info = s_info,
         .write = s_write,
         .buffer = s_buffer,
         .advance = s_advance,

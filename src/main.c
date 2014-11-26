@@ -19,8 +19,8 @@ int main()
     socket_t *socket = socket_new (reactor);
     assert (socket);
 
-    const int rc = socket_bind (socket, 2226);
-    assert (rc != -1);
+    // const int rc = socket_bind (socket, 2226);
+    //assert (rc != -1);
 
     for (int i = 0; i < 10; i++) {
         struct msg_t *msg = msg_new (0);

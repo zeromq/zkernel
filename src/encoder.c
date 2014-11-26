@@ -5,8 +5,8 @@
 
 #include "encoder.h"
 
-extern inline int
-encoder_init (encoder_t *self, encoder_info_t *info);
+extern inline void
+encoder_info (encoder_t *self, encoder_info_t *info);
 
 extern inline int
 encoder_encode (encoder_t *self, frame_t *frame, encoder_info_t *info);

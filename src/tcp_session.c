@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include "io_object.h"
 #include "tcp_session.h"
 #include "msg.h"
 #include "zkernel.h"
@@ -27,7 +28,7 @@ struct tcp_session {
     encoder_info_t encoder_info;
     iobuf_t *sendbuf;
     decoder_t *decoder;
-    decoder_info_t info;
+    decoder_info_t decoder_info;
     iobuf_t *recvbuf;
     int event_mask;
     mailbox_t *owner;
@@ -35,6 +36,9 @@ struct tcp_session {
 
 static int
     io_init (io_object_t *self_, int *fd, uint32_t *timer_interval);
+
+static int
+    s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
 
 static int
     io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
@@ -55,8 +59,7 @@ static struct io_object_ops ops = {
 };
 
 tcp_session_t *
-tcp_session_new (int fd, encoder_constructor_t *encoder_constructor,
-        decoder_constructor_t *decoder_constructor, mailbox_t *owner)
+tcp_session_new (int fd, selector_t *selector, mailbox_t *owner)
 {
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self) {
@@ -64,37 +67,43 @@ tcp_session_new (int fd, encoder_constructor_t *encoder_constructor,
         *self = (tcp_session_t) {
             .base.ops = ops,
             .fd = fd,
-            .encoder = encoder_constructor (),
+            .selector = selector,
             .sendbuf = iobuf_new (buffer_size),
-            .decoder = decoder_constructor (),
             .recvbuf = iobuf_new (buffer_size),
             .event_mask = ZKERNEL_POLLIN | ZKERNEL_POLLOUT,
             .owner = owner
         };
-        if (self->encoder) {
-            const int rc = encoder_init (self->encoder, &self->encoder_info);
+
+        if (self->sendbuf == NULL || self->recvbuf == NULL)
+            goto error;
+
+        if (selector->in_handshake)
+            self->base.ops.event = s_handshake;
+        else {
+            const int rc =
+                selector_select (selector, &self->encoder, &self->decoder);
             if (rc == -1)
-                encoder_destroy (&self->encoder);
-        }
-        if (self->decoder) {
-            const int rc = decoder_init (self->decoder, &self->info);
-            if (rc == -1)
-                decoder_destroy (&self->decoder);
-        }
-        if (self->encoder == NULL || self->sendbuf == NULL || self->decoder == NULL || self->recvbuf == NULL) {
-            if (self->encoder)
-                encoder_destroy (&self->encoder);
-            if (self->sendbuf)
-                iobuf_destroy (&self->sendbuf);
-            if (self->decoder)
-                decoder_destroy (&self->decoder);
-            if (self->recvbuf)
-                iobuf_destroy (&self->recvbuf);
-            free (self);
-            self = NULL;
+                goto error;
+            assert (self->encoder != NULL);
+            encoder_info (self->encoder, &self->encoder_info);
+            assert (self->decoder != NULL);
+            decoder_info (self->decoder, &self->decoder_info);
         }
     }
     return self;
+
+error:
+    if (self->encoder)
+        encoder_destroy (&self->encoder);
+    if (self->sendbuf)
+        iobuf_destroy (&self->sendbuf);
+    if (self->decoder)
+        decoder_destroy (&self->decoder);
+    if (self->recvbuf)
+        iobuf_destroy (&self->recvbuf);
+    free (self);
+
+    return NULL;
 }
 
 void
@@ -192,10 +201,15 @@ s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interv
         self->event_mask &= ~ZKERNEL_POLLOUT;
 
     if (!selector_in_handshake (self->selector)) {
-        const int rc = selector_select (
-            self->selector, &self->encoder, &self->decoder);
+        const int rc =
+            selector_select (self->selector, &self->encoder, &self->decoder);
         if (rc == -1)
             goto error;
+        assert (self->encoder);
+        encoder_info (self->encoder, &self->encoder_info);
+        assert (self->decoder);
+        decoder_info (self->decoder, &self->decoder_info);
+
         self->base.ops.event = io_event;
         self->event_mask = ZKERNEL_POLLIN | ZKERNEL_POLLOUT;
     }
@@ -339,7 +353,7 @@ static int
 s_decode (tcp_session_t *self)
 {
     decoder_t *decoder = self->decoder;
-    decoder_info_t *info = &self->info;
+    decoder_info_t *info = &self->decoder_info;
     iobuf_t *recvbuf = self->recvbuf;
 
     while (1) {

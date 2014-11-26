@@ -3,6 +3,8 @@
 #ifndef __SOCKET_H_INCLUDED__
 #define __SOCKET_H_INCLUDED__
 
+#include "selector.h"
+
 typedef struct socket socket_t;
 
 socket_t *
@@ -12,10 +14,10 @@ void
     socket_destroy (socket_t **self_p);
 
 int
-    socket_bind (socket_t *self, unsigned short port);
+    socket_bind (socket_t *self, unsigned short port, selector_t *selector);
 
 int
-    socket_connect (socket_t *self, unsigned short port);
+    socket_connect (socket_t *self, unsigned short port, selector_t *selector);
 
 int
     socket_send (socket_t *self, const char *data, size_t size);

@@ -16,7 +16,7 @@ struct decoder_info {
 typedef struct decoder_info decoder_info_t;
 
 struct decoder_ops {
-    int (*init) (void *self, decoder_info_t *info);
+    void (*info) (void *self, decoder_info_t *info);
     int (*write) (void *self, iobuf_t *iobuf, decoder_info_t *info);
     void *(*buffer) (void *self);
     int (*advance) (void *self, size_t n, decoder_info_t *info);
@@ -33,10 +33,10 @@ typedef struct decoder decoder_t;
 
 typedef decoder_t *decoder_constructor_t ();
 
-inline int
-decoder_init (decoder_t *self, decoder_info_t *info)
+inline void
+decoder_info (decoder_t *self, decoder_info_t *info)
 {
-    return self->ops.init (self->object, info);
+    self->ops.info (self->object, info);
 }
 
 inline int

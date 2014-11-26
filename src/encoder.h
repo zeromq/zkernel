@@ -18,7 +18,7 @@ typedef struct encoder_info encoder_info_t;
 struct encoder;
 
 struct encoder_ops {
-    int (*init ) (struct encoder *self, encoder_info_t *info);
+    void (*info ) (struct encoder *self, encoder_info_t *info);
     int (*encode) (struct encoder *self, frame_t *frame, encoder_info_t *info);
     int (*read) (struct encoder *self, iobuf_t *iobuf, encoder_info_t *info);
     const void *(*buffer) (struct encoder *self);
@@ -34,10 +34,10 @@ typedef struct encoder encoder_t;
 
 typedef encoder_t *encoder_constructor_t ();
 
-inline int
-encoder_init (encoder_t *self, encoder_info_t *info)
+inline void
+encoder_info (encoder_t *self, encoder_info_t *info)
 {
-    return self->ops.init (self, info);
+    self->ops.info (self, info);
 }
 
 inline int

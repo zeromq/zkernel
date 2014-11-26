@@ -14,8 +14,8 @@ struct stream_encoder {
 
 typedef struct stream_encoder stream_encoder_t;
 
-static int
-    s_init (encoder_t *base, encoder_info_t *info);
+static void
+    s_info (encoder_t *base, encoder_info_t *info);
 
 static int
     s_encode (encoder_t *base, frame_t *frame, encoder_info_t *info);
@@ -36,7 +36,7 @@ static stream_encoder_t *
 s_new ()
 {
     static struct encoder_ops ops = {
-        .init = s_init,
+        .info = s_info,
         .encode = s_encode,
         .read = s_read,
         .buffer = s_buffer,
@@ -52,11 +52,16 @@ s_new ()
     return self;
 }
 
-static int
-s_init (encoder_t *base, encoder_info_t *info)
+static void
+s_info (encoder_t *base, encoder_info_t *info)
 {
-    *info = (encoder_info_t) { .ready = true };
-    return 0;
+    stream_encoder_t *self = (stream_encoder_t *) base;
+    assert (self);
+
+    *info = (encoder_info_t) {
+        .ready = self->bytes_left == 0,
+        .dba_size = self->bytes_left
+    };
 }
 
 static int
