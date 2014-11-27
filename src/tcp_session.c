@@ -77,7 +77,7 @@ tcp_session_new (int fd, selector_t *selector, mailbox_t *owner)
         if (self->sendbuf == NULL || self->recvbuf == NULL)
             goto error;
 
-        if (selector->is_handshake_complete) {
+        if (selector_is_handshake_complete (selector)) {
             const int rc =
                 selector_select (selector, &self->encoder, &self->decoder);
             if (rc == -1)
