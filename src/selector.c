@@ -6,7 +6,7 @@
 #include "selector.h"
 
 extern inline bool
-selector_in_handshake (selector_t *self);
+selector_is_handshake_complete (selector_t *self);
 
 extern inline int
 selector_select (selector_t *self, encoder_t **encoder, decoder_t **decoder);

@@ -10,7 +10,7 @@
 #include "decoder.h"
 
 struct selector {
-    bool (*in_handshake) (struct selector *self);
+    bool (*is_handshake_complete) (struct selector *self);
     int (*select) (struct selector *self, encoder_t **encoder, decoder_t **decoder);
     int (*handshake) (struct selector *self, iobuf_t *recvbuf, iobuf_t *sendbuf);
     void (*destroy) (struct selector **self_p);
@@ -19,9 +19,9 @@ struct selector {
 typedef struct selector selector_t;
 
 inline bool
-selector_in_handshake (selector_t *self)
+selector_is_handshake_complete (selector_t *self)
 {
-    return self->in_handshake (self);
+    return self->is_handshake_complete (self);
 }
 
 inline int

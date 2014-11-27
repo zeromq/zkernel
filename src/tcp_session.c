@@ -54,7 +54,7 @@ static int
 
 static struct io_object_ops ops = {
     .init  = io_init,
-    .event = io_event,
+    .event = s_handshake,
     .message = s_message,
 };
 
@@ -77,9 +77,7 @@ tcp_session_new (int fd, selector_t *selector, mailbox_t *owner)
         if (self->sendbuf == NULL || self->recvbuf == NULL)
             goto error;
 
-        if (selector->in_handshake)
-            self->base.ops.event = s_handshake;
-        else {
+        if (selector->is_handshake_complete) {
             const int rc =
                 selector_select (selector, &self->encoder, &self->decoder);
             if (rc == -1)
@@ -88,6 +86,7 @@ tcp_session_new (int fd, selector_t *selector, mailbox_t *owner)
             encoder_info (self->encoder, &self->encoder_info);
             assert (self->decoder != NULL);
             decoder_info (self->decoder, &self->decoder_info);
+            self->base.ops.event = io_event;
         }
     }
     return self;
@@ -200,7 +199,7 @@ s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interv
     if (iobuf_available (self->sendbuf) == 0)
         self->event_mask &= ~ZKERNEL_POLLOUT;
 
-    if (!selector_in_handshake (self->selector)) {
+    if (selector_is_handshake_complete (self->selector)) {
         const int rc =
             selector_select (self->selector, &self->encoder, &self->decoder);
         if (rc == -1)
