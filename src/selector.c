@@ -8,8 +8,11 @@
 extern inline bool
 selector_is_handshake_complete (selector_t *self);
 
-extern inline int
-selector_select (selector_t *self, encoder_t **encoder, decoder_t **decoder);
+extern inline encoder_t *
+selector_encoder (selector_t *self, encoder_info_t *encoder_info);
+
+extern inline decoder_t *
+selector_decoder (selector_t *self, decoder_info_t *decoder_info);
 
 extern inline int
 selector_handshake (selector_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf);

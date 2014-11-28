@@ -11,7 +11,8 @@
 
 struct selector {
     bool (*is_handshake_complete) (struct selector *self);
-    int (*select) (struct selector *self, encoder_t **encoder, decoder_t **decoder);
+    encoder_t * (*encoder) (struct selector *self, encoder_info_t *encoder_info);
+    decoder_t * (*decoder) (struct selector *self, decoder_info_t *decoder_info);
     int (*handshake) (struct selector *self, iobuf_t *recvbuf, iobuf_t *sendbuf);
     void (*destroy) (struct selector **self_p);
 };
@@ -24,10 +25,16 @@ selector_is_handshake_complete (selector_t *self)
     return self->is_handshake_complete (self);
 }
 
-inline int
-selector_select (selector_t *self, encoder_t **encoder, decoder_t **decoder)
+inline encoder_t *
+selector_encoder (selector_t *self, encoder_info_t *encoder_info)
 {
-    return self->select (self, encoder, decoder);
+    return self->encoder (self, encoder_info);
+}
+
+inline decoder_t *
+selector_decoder (selector_t *self, decoder_info_t *decoder_info)
+{
+    return self->decoder (self, decoder_info);
 }
 
 inline int

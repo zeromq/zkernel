@@ -78,15 +78,12 @@ tcp_session_new (int fd, selector_t *selector, mailbox_t *owner)
             goto error;
 
         if (selector_is_handshake_complete (selector)) {
-            const int rc =
-                selector_select (selector, &self->encoder, &self->decoder);
-            if (rc == -1)
+            self->encoder = selector_encoder (selector, &self->encoder_info);
+            if (self->encoder == NULL)
                 goto error;
-            assert (self->encoder != NULL);
-            encoder_info (self->encoder, &self->encoder_info);
-            assert (self->decoder != NULL);
-            decoder_info (self->decoder, &self->decoder_info);
-            self->base.ops.event = io_event;
+            self->decoder = selector_decoder (selector, &self->decoder_info);
+            if (self->decoder == NULL)
+                goto error;
         }
     }
     return self;
@@ -163,6 +160,8 @@ s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interv
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
 
+    selector_t *selector = self->selector;
+
     if ((flags & ZKERNEL_IO_ERROR) == ZKERNEL_IO_ERROR)
         goto error;
 
@@ -180,7 +179,7 @@ s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interv
     }
 
     const int rc = selector_handshake (
-        self->selector, self->recvbuf, self->sendbuf);
+        selector, self->recvbuf, self->sendbuf);
     if (rc == -1)
         goto error;
 
@@ -199,16 +198,13 @@ s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interv
     if (iobuf_available (self->sendbuf) == 0)
         self->event_mask &= ~ZKERNEL_POLLOUT;
 
-    if (selector_is_handshake_complete (self->selector)) {
-        const int rc =
-            selector_select (self->selector, &self->encoder, &self->decoder);
-        if (rc == -1)
+    if (selector_is_handshake_complete (selector)) {
+        self->encoder = selector_encoder (selector, &self->encoder_info);
+        if (self->encoder == NULL)
             goto error;
-        assert (self->encoder);
-        encoder_info (self->encoder, &self->encoder_info);
-        assert (self->decoder);
-        decoder_info (self->decoder, &self->decoder_info);
-
+        self->decoder = selector_decoder (selector, &self->decoder_info);
+        if (self->decoder == NULL)
+            goto error;
         self->base.ops.event = io_event;
         self->event_mask = ZKERNEL_POLLIN | ZKERNEL_POLLOUT;
     }
