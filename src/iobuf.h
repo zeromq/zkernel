@@ -69,6 +69,17 @@ iobuf_write (iobuf_t *self, const void *ptr, size_t n)
     return n;
 }
 
+inline size_t
+iobuf_write_byte (iobuf_t *self, uint8_t byte)
+{
+    if (iobuf_space (self) == 0)
+        return 0;
+    else {
+        *self->w++ = byte;
+        return 1;
+    }
+}
+
 inline void
 iobuf_put (iobuf_t *self, size_t length)
 {

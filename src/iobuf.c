@@ -70,5 +70,8 @@ iobuf_read (iobuf_t *self, void *ptr, size_t n);
 extern inline size_t
 iobuf_write (iobuf_t *self, const void *ptr, size_t n);
 
+extern inline size_t
+iobuf_write_byte (iobuf_t *self, uint8_t byte);
+
 extern inline void
 iobuf_put (iobuf_t *self, size_t length);
