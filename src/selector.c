@@ -17,6 +17,9 @@ selector_decoder (selector_t *self, decoder_info_t *decoder_info);
 extern inline int
 selector_handshake (selector_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf);
 
+extern inline size_t
+selector_min_buffer_size (selector_t *self);
+
 void
 selector_destroy (selector_t **self_p)
 {

@@ -63,7 +63,9 @@ tcp_session_new (int fd, selector_t *selector, mailbox_t *owner)
 {
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self) {
-        const size_t buffer_size = 4096;
+        const size_t min_buffer_size = selector_min_buffer_size (selector);
+        const size_t buffer_size =
+            min_buffer_size > 4096 ? min_buffer_size : 4096;
         *self = (tcp_session_t) {
             .base.ops = ops,
             .fd = fd,

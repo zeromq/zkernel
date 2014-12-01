@@ -14,6 +14,7 @@ struct selector {
     encoder_t * (*encoder) (struct selector *self, encoder_info_t *encoder_info);
     decoder_t * (*decoder) (struct selector *self, decoder_info_t *decoder_info);
     int (*handshake) (struct selector *self, iobuf_t *recvbuf, iobuf_t *sendbuf);
+    size_t (*min_buffer_size) (struct selector *self);
     void (*destroy) (struct selector **self_p);
 };
 
@@ -41,6 +42,12 @@ inline int
 selector_handshake (selector_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
 {
     return self->handshake (self, recvbuf, sendbuf);
+}
+
+inline size_t
+selector_min_buffer_size (selector_t *self)
+{
+    return self->min_buffer_size (self);
 }
 
 void
