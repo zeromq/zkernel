@@ -1,1 +1,1 @@
-gcc -std=c99 main.c reactor.c atomic.c mailbox.c io_object.c tcp_listener.c tcp_connector.c socket.c tcp_session.c msg.c clock.c encoder.c decoder.c stream_encoder.c stream_decoder.c iobuf.c frame.c selector.c zmtp_selector.c -lpthread set.c -lrt
+gcc -std=c99 main.c reactor.c atomic.c mailbox.c io_object.c tcp_listener.c tcp_connector.c socket.c tcp_session.c msg.c clock.c encoder.c decoder.c stream_encoder.c stream_decoder.c iobuf.c frame.c selector.c zmtp_selector.c zmtp_v3_encoder.c -lpthread set.c -lrt
