@@ -21,6 +21,9 @@ typedef struct frame frame_t;
 frame_t *
     frame_new ();
 
+frame_t *
+    frame_new_with_size (size_t frame_size);
+
 void
     frame_destroy (frame_t **self_p);
 

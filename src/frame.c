@@ -17,6 +17,17 @@ frame_new ()
     return frame;
 }
 
+frame_t *
+frame_new_with_size (size_t frame_size)
+{
+    frame_t *frame = (frame_t *) malloc (sizeof *frame);
+    if (frame) {
+        frame->base = (msg_t) { .msg_type = ZKERNEL_MSG_TYPE_FRAME };
+        frame->frame_size = frame_size;
+    }
+    return frame;
+}
+
 void
 frame_destroy (frame_t **self_p)
 {
