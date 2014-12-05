@@ -84,6 +84,7 @@ s_encode (encoder_t *base, frame_t *frame, encoder_info_t *info)
     uint8_t *buffer = self->buffer;
     buffer [0] = 0;     // flags
     if (frame->frame_size > 255) {
+        buffer [0] |= 0x02;
         put_uint64 (buffer + 1, frame->frame_size);
         self->bytes_left = 9;
     }
