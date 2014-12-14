@@ -21,7 +21,7 @@ struct tcp_connector {
     io_object_t base;
     struct addrinfo *addrinfo;
     int fd;
-    selector_t *selector;
+    protocol_t *protocol;
     int err;
     mailbox_t *owner;
 };
@@ -42,14 +42,14 @@ static struct io_object_ops ops = {
 };
 
 tcp_connector_t *
-tcp_connector_new (selector_t *selector, mailbox_t *owner)
+tcp_connector_new (protocol_t *protocol, mailbox_t *owner)
 {
     tcp_connector_t *self = malloc (sizeof *self);
     if (self)
         *self = (tcp_connector_t) {
             .base.ops = ops,
             .fd = -1,
-            .selector = selector,
+            .protocol = protocol,
             .owner = owner
         };
     return self;

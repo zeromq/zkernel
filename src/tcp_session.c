@@ -14,7 +14,7 @@
 #include "tcp_session.h"
 #include "msg.h"
 #include "zkernel.h"
-#include "selector.h"
+#include "protocol.h"
 #include "encoder.h"
 #include "decoder.h"
 
@@ -23,7 +23,7 @@ struct tcp_session {
     int fd;
     frame_t *queue_head;
     frame_t *queue_tail;
-    selector_t *selector;
+    protocol_t *protocol;
     encoder_t *encoder;
     encoder_info_t encoder_info;
     iobuf_t *sendbuf;
@@ -59,17 +59,17 @@ static struct io_object_ops ops = {
 };
 
 tcp_session_t *
-tcp_session_new (int fd, selector_t *selector, mailbox_t *owner)
+tcp_session_new (int fd, protocol_t *protocol, mailbox_t *owner)
 {
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self) {
-        const size_t min_buffer_size = selector_min_buffer_size (selector);
+        const size_t min_buffer_size = protocol_min_buffer_size (protocol);
         const size_t buffer_size =
             min_buffer_size > 4096 ? min_buffer_size : 4096;
         *self = (tcp_session_t) {
             .base.ops = ops,
             .fd = fd,
-            .selector = selector,
+            .protocol = protocol,
             .sendbuf = iobuf_new (buffer_size),
             .recvbuf = iobuf_new (buffer_size),
             .event_mask = ZKERNEL_POLLIN | ZKERNEL_POLLOUT,
@@ -79,11 +79,11 @@ tcp_session_new (int fd, selector_t *selector, mailbox_t *owner)
         if (self->sendbuf == NULL || self->recvbuf == NULL)
             goto error;
 
-        if (selector_is_handshake_complete (selector)) {
-            self->encoder = selector_encoder (selector, &self->encoder_info);
+        if (protocol_is_handshake_complete (protocol)) {
+            self->encoder = protocol_encoder (protocol, &self->encoder_info);
             if (self->encoder == NULL)
                 goto error;
-            self->decoder = selector_decoder (selector, &self->decoder_info);
+            self->decoder = protocol_decoder (protocol, &self->decoder_info);
             if (self->decoder == NULL)
                 goto error;
         }
@@ -162,7 +162,7 @@ s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interv
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
 
-    selector_t *selector = self->selector;
+    protocol_t *protocol = self->protocol;
 
     if ((flags & ZKERNEL_IO_ERROR) == ZKERNEL_IO_ERROR)
         goto error;
@@ -180,8 +180,8 @@ s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interv
         }
     }
 
-    const int rc = selector_handshake (
-        selector, self->recvbuf, self->sendbuf);
+    const int rc = protocol_handshake (
+        protocol, self->recvbuf, self->sendbuf);
     if (rc == -1)
         goto error;
 
@@ -200,11 +200,11 @@ s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interv
     if (iobuf_available (self->sendbuf) == 0)
         self->event_mask &= ~ZKERNEL_POLLOUT;
 
-    if (selector_is_handshake_complete (selector)) {
-        self->encoder = selector_encoder (selector, &self->encoder_info);
+    if (protocol_is_handshake_complete (protocol)) {
+        self->encoder = protocol_encoder (protocol, &self->encoder_info);
         if (self->encoder == NULL)
             goto error;
-        self->decoder = selector_decoder (selector, &self->decoder_info);
+        self->decoder = protocol_decoder (protocol, &self->decoder_info);
         if (self->decoder == NULL)
             goto error;
         self->base.ops.event = io_event;

@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "zmtp_selector.h"
+#include "zmtp_protocol.h"
 
 static const int zmtp_1_0   = 0;
 static const int zmtp_2_0   = 1;
@@ -16,24 +16,24 @@ static const size_t zmtp_v2_greeting_size   = 12;
 static const size_t zmtp_v3_greeting_size   = 64;
 
 struct state {
-    struct state (*fn) (zmtp_selector_t *, iobuf_t *, iobuf_t *);
+    struct state (*fn) (zmtp_protocol_t *, iobuf_t *, iobuf_t *);
 };
 
 typedef struct state state_t;
 
-typedef state_t (state_fn_t) (zmtp_selector_t *, iobuf_t *, iobuf_t *);
+typedef state_t (state_fn_t) (zmtp_protocol_t *, iobuf_t *, iobuf_t *);
 
-struct zmtp_selector {
-    selector_t base;
+struct zmtp_protocol {
+    protocol_t base;
     int errno;
     bool handshake_complete;
     state_t state;
 };
 
 static int
-s_handshake (selector_t *base, iobuf_t *recvbuf, iobuf_t *sendbuf)
+s_handshake (protocol_t *base, iobuf_t *recvbuf, iobuf_t *sendbuf)
 {
-    zmtp_selector_t *self = (zmtp_selector_t *) base;
+    zmtp_protocol_t *self = (zmtp_protocol_t *) base;
     assert (self);
 
     state_t state = self->state.fn (self, recvbuf, sendbuf);
@@ -46,37 +46,37 @@ s_handshake (selector_t *base, iobuf_t *recvbuf, iobuf_t *sendbuf)
 }
 
 static bool
-s_is_handshake_complete (selector_t *base)
+s_is_handshake_complete (protocol_t *base)
 {
-    zmtp_selector_t *self = (zmtp_selector_t *) base;
+    zmtp_protocol_t *self = (zmtp_protocol_t *) base;
     assert (self);
 
     return self->handshake_complete;
 }
 
 static encoder_t *
-s_encoder (selector_t *base, encoder_info_t *encoder_info)
+s_encoder (protocol_t *base, encoder_info_t *encoder_info)
 {
     return NULL;
 }
 
 static decoder_t *
-s_decoder (selector_t *base, decoder_info_t *decoder_info)
+s_decoder (protocol_t *base, decoder_info_t *decoder_info)
 {
     return NULL;
 }
 
 static size_t
-s_min_buffer_size (selector_t *self)
+s_min_buffer_size (protocol_t *self)
 {
     return zmtp_v3_greeting_size;
 }
 
 static void
-s_destroy (selector_t **self_p)
+s_destroy (protocol_t **self_p)
 {
     if (self_p) {
-        zmtp_selector_t *self = (zmtp_selector_t *) *self_p;
+        zmtp_protocol_t *self = (zmtp_protocol_t *) *self_p;
         assert (self);
         free (self);
         *self_p = NULL;
@@ -85,12 +85,12 @@ s_destroy (selector_t **self_p)
 
 static state_fn_t send_signature;
 
-zmtp_selector_t *
-zmtp_selector_new ()
+zmtp_protocol_t *
+zmtp_protocol_new ()
 {
-    zmtp_selector_t *self = malloc (sizeof *self);
+    zmtp_protocol_t *self = malloc (sizeof *self);
     if (self) {
-        *self = (zmtp_selector_t) {
+        *self = (zmtp_protocol_t) {
             .base = {
                 .handshake = s_handshake,
                 .is_handshake_complete = s_is_handshake_complete,
@@ -113,7 +113,7 @@ static state_fn_t
 
 static state_t
 send_signature (
-    zmtp_selector_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
+    zmtp_protocol_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
 {
     const uint8_t signature [] = { 255, 0, 0, 0, 0, 0, 0, 0, 1, 127 };
     const size_t n = iobuf_write (sendbuf, signature, zmtp_signature_size);
@@ -124,7 +124,7 @@ send_signature (
 
 static state_t
 receive_signature (
-    zmtp_selector_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
+    zmtp_protocol_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
 {
     if (iobuf_available (recvbuf) > 0) {
         if (recvbuf->base [0] != 0xff)
@@ -147,7 +147,7 @@ receive_signature (
 
 static state_t
 receive_zmtp_version (
-    zmtp_selector_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
+    zmtp_protocol_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
 {
     if (iobuf_available (recvbuf) > zmtp_signature_size) {
         //  Use ZMTP/2.0.
@@ -183,7 +183,7 @@ receive_zmtp_version (
 
 static state_t
 receive_zmtp_v2_greeting (
-    zmtp_selector_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
+    zmtp_protocol_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
 {
     if (iobuf_available (recvbuf) >= zmtp_v2_greeting_size)
         self->handshake_complete = true;
@@ -193,7 +193,7 @@ receive_zmtp_v2_greeting (
 
 static state_t
 receive_zmtp_v3_greeting (
-    zmtp_selector_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
+    zmtp_protocol_t *self, iobuf_t *recvbuf, iobuf_t *sendbuf)
 {
     if (iobuf_available (recvbuf) >= zmtp_v3_greeting_size)
         self->handshake_complete = true;

@@ -18,7 +18,7 @@
 #include "atomic.h"
 #include "msg.h"
 #include "zkernel.h"
-#include "selector.h"
+#include "protocol.h"
 
 #define MAX_SESSIONS 8
 
@@ -124,10 +124,10 @@ process_msg (socket_t *self, msg_t **msg_p)
 }
 
 int
-socket_bind (socket_t *self, unsigned short port, selector_t *selector)
+socket_bind (socket_t *self, unsigned short port, protocol_t *protocol)
 {
     tcp_listener_t *listener =
-        tcp_listener_new (selector, &self->mailbox_ifc);
+        tcp_listener_new (protocol, &self->mailbox_ifc);
     if (!listener)
         goto fail;
     int rc = tcp_listener_bind (listener, port);
@@ -148,12 +148,12 @@ fail:
 }
 
 int
-socket_connect (socket_t *self, unsigned short port, selector_t *selector)
+socket_connect (socket_t *self, unsigned short port, protocol_t *protocol)
 {
     assert (self);
 
     tcp_connector_t *connector =
-        tcp_connector_new (selector, &self->mailbox_ifc);
+        tcp_connector_new (protocol, &self->mailbox_ifc);
     if (!connector)
         return -1;
     const int rc = tcp_connector_connect (connector, port);

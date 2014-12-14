@@ -4,12 +4,12 @@
 #define __TCP_LISTENER_H_INCLUDED__
 
 #include "mailbox.h"
-#include "selector.h"
+#include "protocol.h"
 
 typedef struct tcp_listener tcp_listener_t;
 
 tcp_listener_t *
-    tcp_listener_new (selector_t *selector, struct mailbox *owner);
+    tcp_listener_new (protocol_t *protocol, struct mailbox *owner);
 
 void
     tcp_listener_destroy (tcp_listener_t **self_p);
