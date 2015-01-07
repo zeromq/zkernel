@@ -8,12 +8,12 @@
 #define __TCP_CONNECTOR_H_INCLUDED__
 
 #include "mailbox.h"
-#include "protocol.h"
+#include "codec.h"
 
 typedef struct tcp_connector tcp_connector_t;
 
 tcp_connector_t *
-    tcp_connector_new (protocol_t *protocol, mailbox_t *owner);
+    tcp_connector_new (codec_t *codec, mailbox_t *owner);
 
 void
     tcp_connector_destroy (tcp_connector_t **self_p);
