@@ -13,7 +13,8 @@
 typedef struct tcp_listener tcp_listener_t;
 
 tcp_listener_t *
-    tcp_listener_new (codec_t *codec, struct mailbox *owner);
+    tcp_listener_new (
+            codec_constructor_t *codec_constructor, struct mailbox *owner);
 
 void
     tcp_listener_destroy (tcp_listener_t **self_p);

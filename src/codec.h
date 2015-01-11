@@ -39,6 +39,8 @@ struct codec {
 
 typedef struct codec codec_t;
 
+typedef codec_t *(codec_constructor_t) ();
+
 inline int
 codec_init (codec_t *self, uint32_t *status)
 {

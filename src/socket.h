@@ -18,10 +18,10 @@ void
     socket_destroy (socket_t **self_p);
 
 int
-    socket_bind (socket_t *self, unsigned short port, codec_t *codec);
+    socket_bind (socket_t *self, unsigned short port, codec_constructor_t *codec_constructor);
 
 int
-    socket_connect (socket_t *self, unsigned short port, codec_t *codec);
+    socket_connect (socket_t *self, unsigned short port, codec_constructor_t *codec_constructor);
 
 int
     socket_send (socket_t *self, const char *data, size_t size);
