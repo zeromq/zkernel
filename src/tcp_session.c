@@ -18,7 +18,6 @@
 #include "tcp_session.h"
 #include "msg.h"
 #include "zkernel.h"
-#include "protocol.h"
 #include "codec.h"
 
 struct tcp_session {

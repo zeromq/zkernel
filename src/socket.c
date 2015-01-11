@@ -22,7 +22,6 @@
 #include "atomic.h"
 #include "msg.h"
 #include "zkernel.h"
-#include "protocol.h"
 
 #define MAX_SESSIONS 8
 
