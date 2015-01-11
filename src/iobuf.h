@@ -90,4 +90,29 @@ iobuf_put (iobuf_t *self, size_t length)
     self->w += length;
 }
 
+inline void
+iobuf_drop (iobuf_t *self, size_t length)
+{
+    self->r += length;
+}
+
+inline size_t
+iobuf_copy (iobuf_t *dst, iobuf_t *src, size_t n)
+{
+    const size_t available = iobuf_available (src);
+    if (n > available)
+        n = available;
+    const size_t copied = iobuf_write (dst, src->r, n);
+    iobuf_drop (src, copied);
+    return copied;
+}
+
+inline size_t
+iobuf_copy_all (iobuf_t *dst, iobuf_t *src)
+{
+    const size_t copied = iobuf_write (dst, src->r, iobuf_available (src));
+    iobuf_drop (src, copied);
+    return copied;
+}
+
 #endif

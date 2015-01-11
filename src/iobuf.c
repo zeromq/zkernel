@@ -79,3 +79,12 @@ iobuf_write_byte (iobuf_t *self, uint8_t byte);
 
 extern inline void
 iobuf_put (iobuf_t *self, size_t length);
+
+extern inline void
+iobuf_drop (iobuf_t *self, size_t length);
+
+extern inline size_t
+iobuf_copy (iobuf_t *dst, iobuf_t *src, size_t n);
+
+extern inline size_t
+iobuf_copy_all (iobuf_t *dst, iobuf_t *src);
