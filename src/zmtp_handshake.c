@@ -216,7 +216,7 @@ receive_signature_b (zmtp_handshake_t *self, iobuf_t *iobuf)
         return (state_t) { NULL };
     }
 
-    n = iobuf_write_byte (iobuf, zmtp_3_0);
+    n = iobuf_write_byte (self->sendbuf, zmtp_3_0);
     assert (n == 1);
 
     return receive_zmtp_version (self, iobuf);
@@ -274,7 +274,7 @@ receive_zmtp_v3_greeting (zmtp_handshake_t *self, iobuf_t *iobuf)
     if (iobuf_available (self->recvbuf) < zmtp_v3_greeting_size)
         return (state_t) { receive_zmtp_v3_greeting };
 
-    (state_t) { NULL };
+    return (state_t) { NULL };
 }
 
 static struct codec_ops codec_ops = {
