@@ -43,7 +43,6 @@ static state_fn_t
     receive_zmtp_v2_greeting,
     receive_zmtp_v3_greeting;
 
-
 static struct codec_ops codec_ops;
 
 zmtp_handshake_t *
@@ -240,8 +239,7 @@ receive_zmtp_version (zmtp_handshake_t *self, iobuf_t *iobuf)
     else {
         size_t n = iobuf_write_byte (self->sendbuf, 0);
         assert (n == 1);
-        char mechanism [20] = { 0 };
-        memcpy (mechanism, "NULL", 4);
+        char mechanism [20] = { 'N', 'U', 'L', 'L' };
         n = iobuf_write (self->sendbuf, mechanism, sizeof mechanism);
         assert (n == sizeof mechanism);
         n = iobuf_write_byte (self->sendbuf, 0);
