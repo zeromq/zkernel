@@ -150,15 +150,12 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
     if ((io_flags & ZKERNEL_IO_ERROR) != 0)
         goto error;
 
-    uint32_t mask = self->codec_status;
-    while ((self->codec_status & mask) != 0) {
+    while (1) {
         if ((io_flags & ZKERNEL_INPUT_READY) != 0) {
             if (s_input (self) == -1)
                 goto error;
-            if ((self->codec_status & ZKERNEL_CODEC_WRITE_OK) != 0) {
+            if ((self->codec_status & ZKERNEL_CODEC_WRITE_OK) != 0)
                 io_flags &= ~ZKERNEL_INPUT_READY;
-                mask &= ~ZKERNEL_CODEC_WRITE_OK;
-            }
         }
 
         while ((self->codec_status & ZKERNEL_CODEC_DECODER_READY) != 0) {
@@ -181,17 +178,27 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
         if ((io_flags & ZKERNEL_OUTPUT_READY) != 0) {
             if (s_output (self) == -1)
                 goto error;
-            if ((self->codec_status & ZKERNEL_CODEC_READ_OK) != 0) {
+            if ((self->codec_status & ZKERNEL_CODEC_READ_OK) != 0)
                 io_flags &= ~ZKERNEL_OUTPUT_READY;
-                mask &= ~ZKERNEL_CODEC_READ_OK;
-            }
         }
+
+        uint32_t mask = self->codec_status;
+        if ((io_flags & ZKERNEL_INPUT_READY) == 0)
+            mask &= ~ZKERNEL_CODEC_WRITE_OK;
+        if ((io_flags & ZKERNEL_OUTPUT_READY) == 0)
+            mask &= ~ZKERNEL_CODEC_READ_OK;
+
+        if ((self->codec_status & mask) == 0)
+            break;
     }
 
-    if ((self->codec_status & ZKERNEL_CODEC_READ_OK) != 0 || iobuf_available (self->sendbuf))
-        return ZKERNEL_POLLIN | ZKERNEL_POLLOUT;
-    else
-        return ZKERNEL_POLLIN;
+    int io_mask = 0;
+    if ((self->codec_status & ZKERNEL_CODEC_WRITE_OK) != 0)
+        io_mask |= ZKERNEL_POLLIN;
+    if ((self->codec_status & ZKERNEL_CODEC_READ_OK) != 0 || iobuf_available (self->sendbuf) > 0)
+        io_mask |= ZKERNEL_POLLOUT;
+
+    return io_mask;
 
 error:
     s_send_session_closed (self);
@@ -205,43 +212,42 @@ s_input (tcp_session_t *self)
     codec_t *codec = self->codec;
     iobuf_t *recvbuf = self->recvbuf;
 
-    while (iobuf_available (recvbuf))
-        if (codec_write (codec, recvbuf, &self->codec_status) != 0)
-            return -1;
-
     while ((self->codec_status & ZKERNEL_CODEC_WRITE_OK) != 0) {
-        void *buffer;
-        size_t buffer_size;
-        if (codec_write_buffer (codec, &buffer, &buffer_size) == -1)
-            return -1;
-        if (buffer_size > 256) {
-            const ssize_t rc = recv (self->fd, buffer, buffer_size, 0);
-            if (rc == 0)
-                return -1;
-            if (rc == -1) {
-                if (errno == EINTR || errno == EAGAIN)
-                    return 0;
-                else
-                    return -1;
-            }
-            if (codec_write_advance (
-                    codec, (size_t) rc, &self->codec_status) != 0)
+        if (iobuf_available (recvbuf) > 0) {
+            if (codec_write (codec, recvbuf, &self->codec_status) != 0)
                 return -1;
         }
         else {
-            iobuf_reset (recvbuf);
-            const ssize_t rc = iobuf_recv (recvbuf, self->fd);
-            if (rc == 0)
+            void *buffer;
+            size_t buffer_size;
+            if (codec_write_buffer (codec, &buffer, &buffer_size) == -1)
                 return -1;
-            if (rc == -1) {
-                if (errno == EINTR || errno == EAGAIN)
-                    return 0;
-                else
+            if (buffer_size > 256) {
+                const ssize_t rc = recv (self->fd, buffer, buffer_size, 0);
+                if (rc == 0)
+                    return -1;
+                if (rc == -1) {
+                    if (errno == EINTR || errno == EAGAIN)
+                        return 0;
+                    else
+                        return -1;
+                }
+                if (codec_write_advance (
+                        codec, (size_t) rc, &self->codec_status) != 0)
                     return -1;
             }
-            while (iobuf_available (recvbuf))
-                if (codec_write (codec, recvbuf, &self->codec_status) != 0)
+            else {
+                iobuf_reset (recvbuf);
+                const ssize_t rc = iobuf_recv (recvbuf, self->fd);
+                if (rc == 0)
                     return -1;
+                if (rc == -1) {
+                    if (errno == EINTR || errno == EAGAIN)
+                        return 0;
+                    else
+                        return -1;
+                }
+            }
         }
     }
 
