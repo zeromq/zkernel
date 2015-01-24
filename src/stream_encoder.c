@@ -18,36 +18,11 @@ struct stream_encoder {
 
 typedef struct stream_encoder stream_encoder_t;
 
-static void
-    s_info (encoder_t *base, encoder_info_t *info);
-
-static int
-    s_encode (encoder_t *base, frame_t *frame, encoder_info_t *info);
-
-static int
-    s_read (encoder_t *base, iobuf_t *iobuf, encoder_info_t *info);
-
-static const void *
-    s_buffer (encoder_t *base);
-
-static int
-    s_advance (encoder_t *base, size_t n, encoder_info_t *info);
-
-static void
-    s_destroy (encoder_t **base_p);
+static struct encoder_ops ops;
 
 static stream_encoder_t *
 s_new ()
 {
-    static struct encoder_ops ops = {
-        .info = s_info,
-        .encode = s_encode,
-        .read = s_read,
-        .buffer = s_buffer,
-        .advance = s_advance,
-        .destroy = s_destroy
-    };
-
     stream_encoder_t *self = malloc (sizeof *self);
     if (self)
         *self = (stream_encoder_t) {
@@ -56,20 +31,8 @@ s_new ()
     return self;
 }
 
-static void
-s_info (encoder_t *base, encoder_info_t *info)
-{
-    stream_encoder_t *self = (stream_encoder_t *) base;
-    assert (self);
-
-    *info = (encoder_info_t) {
-        .ready = self->bytes_left == 0,
-        .dba_size = self->bytes_left
-    };
-}
-
 static int
-s_encode (encoder_t *base, frame_t *frame, encoder_info_t *info)
+s_encode (encoder_t *base, frame_t *frame, uint32_t *status)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
@@ -83,16 +46,17 @@ s_encode (encoder_t *base, frame_t *frame, encoder_info_t *info)
     self->ptr = frame->frame_data;
     self->bytes_left = frame->frame_size;
 
-    *info = (encoder_info_t) {
-        .ready = frame->frame_size == 0,
-        .dba_size = frame->frame_size
-    };
+    if (self->bytes_left == 0)
+        *status = ZKERNEL_ENCODER_READY;
+    else
+        *status = self->bytes_left & ZKERNEL_ENCODER_BUFFER_MASK
+                | ZKERNEL_ENCODER_READ_OK;
 
     return 0;
 }
 
 static int
-s_read (encoder_t *base, iobuf_t *iobuf, encoder_info_t *info)
+s_read (encoder_t *base, iobuf_t *iobuf, uint32_t *status)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
@@ -102,27 +66,35 @@ s_read (encoder_t *base, iobuf_t *iobuf, encoder_info_t *info)
     self->ptr += n;
     self->bytes_left -= n;
 
-    if (self->bytes_left > 0)
-        *info = (encoder_info_t) { .dba_size = self->bytes_left };
+    if (self->bytes_left == 0)
+        *status = ZKERNEL_ENCODER_READY;
+    else
+        *status = self->bytes_left & ZKERNEL_ENCODER_BUFFER_MASK
+                | ZKERNEL_ENCODER_READ_OK;
+
+    return 0;
+}
+
+static int
+s_buffer (encoder_t *base, const void **buffer, size_t *buffer_size)
+{
+    stream_encoder_t *self = (stream_encoder_t *) base;
+    assert (self);
+
+    if (self->frame) {
+        *buffer = self->ptr;
+        *buffer_size = self->bytes_left;
+    }
     else {
-        frame_destroy (&self->frame);
-        *info = (encoder_info_t) { .ready = true };
+        *buffer = NULL;
+        *buffer_size = 0;
     }
 
     return 0;
 }
 
-static const void *
-s_buffer (encoder_t *base)
-{
-    stream_encoder_t *self = (stream_encoder_t *) base;
-    assert (self);
-
-    return self->frame ? self->ptr : NULL;
-}
-
 static int
-s_advance (encoder_t *base, size_t n, encoder_info_t *info)
+s_advance (encoder_t *base, size_t n, uint32_t *status)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
@@ -131,14 +103,26 @@ s_advance (encoder_t *base, size_t n, encoder_info_t *info)
     self->ptr += n;
     self->bytes_left -= n;
 
-    if (self->bytes_left > 0)
-        *info = (encoder_info_t) { .dba_size = self->bytes_left };
-    else {
-        frame_destroy (&self->frame);
-        *info = (encoder_info_t) { .ready = true };
-    }
+    *status = self->bytes_left & ZKERNEL_ENCODER_BUFFER_MASK;
+    if (self->bytes_left == 0)
+        *status |= ZKERNEL_ENCODER_READY;
+    else
+        *status |= ZKERNEL_ENCODER_READ_OK;
 
     return 0;
+}
+
+static uint32_t
+s_status (encoder_t *base)
+{
+    stream_encoder_t *self = (stream_encoder_t *) base;
+    assert (self);
+
+    if (self->bytes_left == 0)
+        return ZKERNEL_ENCODER_READY;
+    else
+        return (self->bytes_left & ZKERNEL_ENCODER_BUFFER_MASK)
+              | ZKERNEL_ENCODER_READ_OK;
 }
 
 static void
@@ -152,6 +136,15 @@ s_destroy (encoder_t **base_p)
         *base_p = NULL;
     }
 }
+
+static struct encoder_ops ops = {
+    .encode = s_encode,
+    .read = s_read,
+    .buffer = s_buffer,
+    .advance = s_advance,
+    .status = s_status,
+    .destroy = s_destroy
+};
 
 encoder_t *
 stream_encoder_create_encoder ()

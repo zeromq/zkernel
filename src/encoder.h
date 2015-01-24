@@ -7,26 +7,24 @@
 #ifndef __ENCODER_H_INCLUDED__
 #define __ENCODER_H_INCLUDED__
 
-#include <stdbool.h>
+#include <stdint.h>
 
 #include "frame.h"
 #include "iobuf.h"
 
-struct encoder_info {
-    bool ready;
-    size_t dba_size;
-};
-
-typedef struct encoder_info encoder_info_t;
+#define ZKERNEL_ENCODER_BUFFER_MASK 0xfffff000
+#define ZKERNEL_ENCODER_READY       0x01
+#define ZKERNEL_ENCODER_READ_OK     0x02
+#define ZKERNEL_ENCODER_ERROR       0x04
 
 struct encoder;
 
 struct encoder_ops {
-    void (*info ) (struct encoder *self, encoder_info_t *info);
-    int (*encode) (struct encoder *self, frame_t *frame, encoder_info_t *info);
-    int (*read) (struct encoder *self, iobuf_t *iobuf, encoder_info_t *info);
-    const void *(*buffer) (struct encoder *self);
-    int (*advance) (struct encoder *self, size_t n, encoder_info_t *info);
+    int (*encode) (struct encoder *self, frame_t *frame, uint32_t *status);
+    int (*read) (struct encoder *self, iobuf_t *iobuf, uint32_t *status);
+    int (*buffer) (struct encoder *self, const void **buffer, size_t *buffer_size);
+    int (*advance) (struct encoder *self, size_t n, uint32_t *status);
+    uint32_t (*status) (struct encoder *self);
     void (*destroy) (struct encoder **self_p);
 };
 
@@ -36,36 +34,34 @@ struct encoder {
 
 typedef struct encoder encoder_t;
 
-typedef encoder_t *encoder_constructor_t ();
-
-inline void
-encoder_info (encoder_t *self, encoder_info_t *info)
+inline int
+encoder_encode (encoder_t *self, frame_t *frame, uint32_t *status)
 {
-    self->ops.info (self, info);
+    return self->ops.encode (self, frame, status);
 }
 
 inline int
-encoder_encode (encoder_t *self, frame_t *frame, encoder_info_t *info)
+encoder_read (encoder_t *self, iobuf_t *iobuf, uint32_t *status)
 {
-    return self->ops.encode (self, frame, info);
+    return self->ops.read (self, iobuf, status);
 }
 
 inline int
-encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_info_t *info)
+encoder_buffer (encoder_t *self, const void **buffer, size_t *buffer_size)
 {
-    return self->ops.read (self, iobuf, info);
-}
-
-inline const void *
-encoder_buffer (encoder_t *self)
-{
-    return self->ops.buffer (self);
+    return self->ops.buffer (self, buffer, buffer_size);
 }
 
 inline int
-encoder_advance (encoder_t *self, size_t n, encoder_info_t *info)
+encoder_advance (encoder_t *self, size_t n, uint32_t *status)
 {
-    return self->ops.advance (self, n, info);
+    return self->ops.advance (self, n, status);
+}
+
+inline uint32_t
+encoder_status (encoder_t *self)
+{
+    return self->ops.status (self);
 }
 
 void

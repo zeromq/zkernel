@@ -9,20 +9,20 @@
 
 #include "encoder.h"
 
-extern inline void
-encoder_info (encoder_t *self, encoder_info_t *info);
+extern inline int
+encoder_encode (encoder_t *self, frame_t *frame, uint32_t *status);
 
 extern inline int
-encoder_encode (encoder_t *self, frame_t *frame, encoder_info_t *info);
+encoder_read (encoder_t *self, iobuf_t *iobuf, uint32_t *status);
 
 extern inline int
-encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_info_t *info);
-
-extern inline const void *
-encoder_buffer (encoder_t *self);
+encoder_buffer (encoder_t *self, const void **buffer, size_t *buffer_size);
 
 extern inline int
-encoder_advance (encoder_t *self, size_t n, encoder_info_t *info);
+encoder_advance (encoder_t *self, size_t n, uint32_t *status);
+
+extern inline uint32_t
+encoder_status (encoder_t *self);
 
 void
 encoder_destroy (encoder_t **self_p)
