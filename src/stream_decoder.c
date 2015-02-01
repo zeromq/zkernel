@@ -3,7 +3,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.*/
 
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -11,17 +10,23 @@
 #include "frame.h"
 
 struct stream_decoder {
+    decoder_t base;
     frame_t *frame;
 };
 
 typedef struct stream_decoder stream_decoder_t;
+
+static struct decoder_ops decoder_ops;
 
 static stream_decoder_t *
 s_new ()
 {
     stream_decoder_t *self = malloc (sizeof *self);
     if (self) {
-        *self = (stream_decoder_t) { .frame = frame_new () };
+        *self = (stream_decoder_t) {
+            .base.ops = decoder_ops,
+            .frame = frame_new ()
+        };
         if (self->frame == NULL) {
             free (self);
             self = NULL;
@@ -30,24 +35,8 @@ s_new ()
     return self;
 }
 
-static void
-s_info (void *self_, decoder_info_t *info)
-{
-    stream_decoder_t *self = (stream_decoder_t *) self_;
-    assert (self);
-
-    frame_t *frame = self->frame;
-    if (frame)
-        *info = (decoder_info_t) {
-            .ready = frame->frame_size > 0,
-            .dba_size = sizeof frame->frame_data - frame->frame_size
-        };
-    else
-        *info = (decoder_info_t) { .ready = false, .dba_size = 0 };
-}
-
 static int
-s_write (void *self_, iobuf_t *iobuf, decoder_info_t *info)
+s_write (decoder_t *self_, iobuf_t *iobuf, decoder_status_t *status)
 {
     stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self);
@@ -59,26 +48,19 @@ s_write (void *self_, iobuf_t *iobuf, decoder_info_t *info)
     frame->frame_size += iobuf_read (iobuf,
         frame->frame_data, sizeof frame->frame_data - frame->frame_size);
 
-    *info = (decoder_info_t) {
-        .ready = frame->frame_size > 0,
-        .dba_size = sizeof frame->frame_data - frame->frame_size
-    };
+    const size_t free_space =
+        sizeof frame->frame_data - frame->frame_size;
+    *status = free_space & DECODER_BUFFER_MASK;
+    if (frame->frame_size > 0)
+        *status |= DECODER_READY;
+    if (free_space > 0)
+        *status |= DECODER_WRITE_OK;
 
     return 0;
 }
 
-static void *
-s_buffer (void *self_)
-{
-    stream_decoder_t *self = (stream_decoder_t *) self_;
-    assert (self);
-
-    frame_t *frame = self->frame;
-    return frame ? frame->frame_data + frame->frame_size : NULL;
-}
-
 static int
-s_advance (void *self_, size_t n, decoder_info_t *info)
+s_buffer (decoder_t *self_, void **buffer, size_t *buffer_size)
 {
     stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self);
@@ -87,14 +69,39 @@ s_advance (void *self_, size_t n, decoder_info_t *info)
     if (frame == NULL)
         return -1;
 
-    assert (frame->frame_size + n <= sizeof frame->frame_data);
+    *buffer = frame->frame_data + frame->frame_size;
+    *buffer_size = sizeof frame->frame_data - frame->frame_size;
+
+    return 0;
+}
+
+static int
+s_advance (decoder_t *self_, size_t n, decoder_status_t *status)
+{
+    stream_decoder_t *self = (stream_decoder_t *) self_;
+    assert (self);
+
+    frame_t *frame = self->frame;
+    if (frame == NULL)
+        return -1;
+    if (frame->frame_size + n > sizeof frame->frame_data)
+        return -1;
+
     frame->frame_size += n;
-    *info = (decoder_info_t) { .ready = frame->frame_size > 0 };
+
+    const size_t free_space =
+        sizeof frame->frame_data - frame->frame_size;
+    *status = free_space & DECODER_BUFFER_MASK;
+    if (frame->frame_size > 0)
+        *status |= DECODER_READY;
+    if (free_space > 0)
+        *status |= DECODER_WRITE_OK;
+
     return 0;
 }
 
 static frame_t *
-s_decode (void *self_, decoder_info_t *info)
+s_decode (decoder_t *self_, decoder_status_t *status)
 {
     stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self != NULL);
@@ -105,16 +112,38 @@ s_decode (void *self_, decoder_info_t *info)
 
     self->frame = frame_new ();
     if (self->frame)
-        *info = (decoder_info_t) {
-            .dba_size = sizeof self->frame->frame_data };
+        *status = (sizeof frame->frame_data & DECODER_BUFFER_MASK)
+                | DECODER_WRITE_OK;
     else
-        *info = (decoder_info_t) {};
+        *status = DECODER_ERROR;
 
     return frame;
 }
 
+static decoder_status_t
+s_status (decoder_t *self_)
+{
+    stream_decoder_t *self = (stream_decoder_t *) self_;
+    assert (self);
+
+    const frame_t *frame = self->frame;
+    if (frame == NULL)
+        return DECODER_ERROR;
+    else {
+        const size_t free_space =
+            sizeof frame->frame_data - frame->frame_size;
+        decoder_status_t status =
+            free_space & DECODER_BUFFER_MASK;
+        if (frame->frame_size > 0)
+            status |= DECODER_READY;
+        if (free_space > 0 )
+            status |= DECODER_WRITE_OK;
+        return status;
+    }
+}
+
 static void
-s_destroy (void **self_p)
+s_destroy (decoder_t **self_p)
 {
     assert (self_p);
     if (*self_p) {
@@ -124,26 +153,17 @@ s_destroy (void **self_p)
     }
 }
 
+static struct decoder_ops decoder_ops = {
+    .write = s_write,
+    .buffer = s_buffer,
+    .advance = s_advance,
+    .decode = s_decode,
+    .status = s_status,
+    .destroy = s_destroy
+};
+
 decoder_t *
 stream_decoder_create_decoder ()
 {
-    static struct decoder_ops ops = {
-        .info = s_info,
-        .write = s_write,
-        .buffer = s_buffer,
-        .advance = s_advance,
-        .decode = s_decode,
-        .destroy = s_destroy
-    };
-
-    decoder_t *self = (decoder_t *) malloc (sizeof *self);
-    if (self) {
-        *self = (decoder_t) { .object = s_new (), .ops = ops };
-        if (self->object == NULL) {
-            free (self);
-            self = NULL;
-        }
-    }
-
-    return self;
+    return (decoder_t *) s_new ();
 }

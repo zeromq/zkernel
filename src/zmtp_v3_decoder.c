@@ -12,6 +12,7 @@
 #include "decoder.h"
 
 struct zmtp_v3_decoder {
+    decoder_t base;
     int state;
     uint8_t buffer [9];
     frame_t *frame;
@@ -29,22 +30,26 @@ typedef struct zmtp_v3_decoder zmtp_v3_decoder_t;
 static size_t
 s_decode_length (const uint8_t *ptr);
 
+static struct decoder_ops decoder_ops;
+
 static zmtp_v3_decoder_t *
 s_new ()
 {
-    zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) malloc (sizeof *self);
+    zmtp_v3_decoder_t *self =
+        (zmtp_v3_decoder_t *) malloc (sizeof *self);
     if (self) {
         *self = (zmtp_v3_decoder_t) {
+            .base = (decoder_t) { .ops = decoder_ops },
+            .state = DECODING_FLAGS,
             .ptr = self->buffer,
-            .bytes_left = 1,
-            .state = DECODING_FLAGS
+            .bytes_left = 1
         };
     }
     return self;
 }
 
 static int
-s_write (void *self_, iobuf_t *iobuf, decoder_info_t *info)
+s_write (decoder_t *self_, iobuf_t *iobuf, decoder_status_t *status)
 {
     zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
@@ -88,25 +93,34 @@ s_write (void *self_, iobuf_t *iobuf, decoder_info_t *info)
             self->state = FRAME_READY;
     }
 
-    *info = (decoder_info_t) {
-        .ready = self->state == FRAME_READY,
-        .dba_size = self->state == DECODING_BODY ? self->bytes_left : 0
-    };
+    *status = 0;
+    if (self->state == DECODING_BODY)
+        *status |= self->bytes_left & DECODER_BUFFER_MASK;
+    if (self->state == FRAME_READY)
+        *status |= DECODER_READY;
+    else
+        *status |= DECODER_WRITE_OK;
 
     return 0;
 }
 
-static void *
-s_buffer (void *self_)
+static int
+s_buffer (decoder_t *self_, void **buffer, size_t *buffer_size)
 {
     zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
 
-    return self->state == DECODING_BODY? self->ptr: NULL;
+    if (self->state != DECODING_BODY)
+        return -1;
+    else {
+        *buffer = self->ptr;
+        *buffer_size = self->bytes_left;
+        return 0;
+    }
 }
 
 static int
-s_advance (void *self_, size_t n, decoder_info_t *info)
+s_advance (decoder_t *self_, size_t n, decoder_status_t *status)
 {
     zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
@@ -122,33 +136,59 @@ s_advance (void *self_, size_t n, decoder_info_t *info)
     if (self->bytes_left == 0)
         self->state = FRAME_READY;
 
-    *info = (decoder_info_t) {
-        .ready = self->state == FRAME_READY,
-        .dba_size = self->bytes_left
-    };
+    *status = 0;
+    if (self->state == DECODING_BODY)
+        *status |= self->bytes_left & DECODER_BUFFER_MASK;
+    if (self->state == FRAME_READY)
+        *status |= DECODER_READY;
+    else
+        *status |= DECODER_WRITE_OK;
 
     return 0;
 }
 
 static frame_t *
-s_decode (void *self_, decoder_info_t *info)
+s_decode (decoder_t *self_, decoder_status_t *status)
 {
     zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
 
+    if (self->state != FRAME_READY)
+        return NULL;
+
     frame_t *frame = self->frame;
-    self->bytes_left = 1;
-    self->ptr = self->buffer;
     self->frame = NULL;
     self->state = DECODING_FLAGS;
+    self->ptr = self->buffer;
+    self->bytes_left = 1;
 
-    *info = (decoder_info_t) { 0 };
+    *status = DECODER_WRITE_OK;
 
     return frame;
 }
 
+static decoder_status_t
+s_status (decoder_t *self_)
+{
+    zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
+    assert (self);
+
+    if (self->state == DECODING_LENGTH && self->bytes_left == 0)
+        return DECODER_ERROR;
+    else {
+        decoder_status_t status = 0;
+        if (self->state == DECODING_BODY)
+            status |= self->bytes_left & DECODER_BUFFER_MASK;
+        if (self->state == FRAME_READY)
+            status |= DECODER_READY;
+        else
+            status |= DECODER_WRITE_OK;
+        return status;
+    }
+}
+
 static void
-s_destroy (void **self_p)
+s_destroy (decoder_t **self_p)
 {
     assert (self_p);
     if (*self_p) {
@@ -157,6 +197,21 @@ s_destroy (void **self_p)
         free (self);
         *self_p = NULL;
     }
+}
+
+static struct decoder_ops ops = {
+    .write = s_write,
+    .buffer = s_buffer,
+    .advance = s_advance,
+    .decode = s_decode,
+    .status = s_status,
+    .destroy = s_destroy
+};
+
+decoder_t *
+zmtp_v3_decoder_create_decoder ()
+{
+    return (decoder_t *) s_new ();
 }
 
 static uint64_t
@@ -177,25 +232,3 @@ s_decode_length (const uint8_t *ptr)
             (uint64_t) ptr [8];
 }
 
-decoder_t *
-zmtp_v3_decoder_create_decoder ()
-{
-    static struct decoder_ops ops = {
-        .write = s_write,
-        .buffer = s_buffer,
-        .advance = s_advance,
-        .decode = s_decode,
-        .destroy = s_destroy
-    };
-
-    decoder_t *self = (decoder_t *) malloc (sizeof *self);
-    if (self) {
-        *self = (decoder_t) { .object = s_new (), .ops = ops };
-        if (self->object == NULL) {
-            free (self);
-            self = NULL;
-        }
-    }
-
-    return self;
-}

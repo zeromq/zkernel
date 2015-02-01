@@ -9,20 +9,20 @@
 
 #include "decoder.h"
 
-extern inline void
-decoder_info (decoder_t *self, decoder_info_t *info);
-
-extern inline int
-decoder_write (decoder_t *self, iobuf_t *iobuf, decoder_info_t *info);
-
-extern inline void *
-decoder_buffer (decoder_t *self);
-
-extern inline int
-decoder_advance (decoder_t *self, size_t n, decoder_info_t *info);
-
 extern inline frame_t *
-decoder_decode (decoder_t *self, decoder_info_t *info);
+decoder_decode (decoder_t *self, decoder_status_t *status);
+
+extern inline int
+decoder_write (decoder_t *self, iobuf_t *iobuf, decoder_status_t *status);
+
+extern inline int
+decoder_buffer (decoder_t *self, void **buffer, size_t *buffer_size);
+
+extern inline int
+decoder_advance (decoder_t *self, size_t n, decoder_status_t *status);
+
+extern inline decoder_status_t
+decoder_status (decoder_t *self);
 
 void
 decoder_destroy (decoder_t **self_p)
@@ -30,9 +30,6 @@ decoder_destroy (decoder_t **self_p)
     assert (self_p);
     if (*self_p) {
         decoder_t *self = *self_p;
-        self->ops.destroy (&self->object);
-        free (self);
-        *self_p = NULL;
+        self->ops.destroy (self_p);
     }
 }
-

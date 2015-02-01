@@ -7,29 +7,30 @@
 #ifndef __DECODER_H_INCLUDED__
 #define __DECODER_H_INCLUDED__
 
-#include <stdbool.h>
+#include <stdint.h>
 
 #include "iobuf.h"
 #include "frame.h"
 
-struct decoder_info {
-    bool ready;
-    size_t dba_size;
-};
+#define DECODER_BUFFER_MASK 0xfffff000
+#define DECODER_READY       0x01
+#define DECODER_WRITE_OK    0x02
+#define DECODER_ERROR       0x04
 
-typedef struct decoder_info decoder_info_t;
+typedef uint32_t decoder_status_t;
+
+struct decoder;
 
 struct decoder_ops {
-    void (*info) (void *self, decoder_info_t *info);
-    int (*write) (void *self, iobuf_t *iobuf, decoder_info_t *info);
-    void *(*buffer) (void *self);
-    int (*advance) (void *self, size_t n, decoder_info_t *info);
-    frame_t *(*decode) (void *self, decoder_info_t *info);
-    void (*destroy) (void **self_p);
+    int (*write) (struct decoder *self, iobuf_t *iobuf, decoder_status_t *status);
+    int (*buffer) (struct decoder *self, void **buffer, size_t *buffer_size);
+    int (*advance) (struct decoder *self, size_t n, decoder_status_t *status);
+    frame_t *(*decode) (struct decoder *self, decoder_status_t *status);
+    decoder_status_t (*status) (struct decoder *self);
+    void (*destroy) (struct decoder **self_p);
 };
 
 struct decoder {
-    void *object;
     struct decoder_ops ops;
 };
 
@@ -37,34 +38,34 @@ typedef struct decoder decoder_t;
 
 typedef decoder_t *decoder_constructor_t ();
 
-inline void
-decoder_info (decoder_t *self, decoder_info_t *info)
-{
-    self->ops.info (self->object, info);
-}
-
-inline int
-decoder_write (decoder_t *self, iobuf_t *iobuf, decoder_info_t *info)
-{
-    return self->ops.write (self->object, iobuf, info);
-}
-
-inline void *
-decoder_buffer (decoder_t *self)
-{
-    return self->ops.buffer (self->object);
-}
-
-inline int
-decoder_advance (decoder_t *self, size_t n, decoder_info_t *info)
-{
-    return self->ops.advance (self->object, n, info);
-}
-
 inline frame_t *
-decoder_decode (decoder_t *self, decoder_info_t *info)
+decoder_decode (decoder_t *self, decoder_status_t *status)
 {
-    return self->ops.decode (self->object, info);
+    return self->ops.decode (self, status);
+}
+
+inline int
+decoder_write (decoder_t *self, iobuf_t *iobuf, decoder_status_t *status)
+{
+    return self->ops.write (self, iobuf, status);
+}
+
+inline int
+decoder_buffer (decoder_t *self, void **buffer, size_t *buffer_size)
+{
+    return self->ops.buffer (self, buffer, buffer_size);
+}
+
+inline int
+decoder_advance (decoder_t *self, size_t n, decoder_status_t *status)
+{
+    return self->ops.advance (self, n, status);
+}
+
+inline decoder_status_t
+decoder_status (decoder_t *self)
+{
+    return self->ops.status (self);
 }
 
 void
