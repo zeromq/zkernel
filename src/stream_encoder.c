@@ -18,7 +18,7 @@ struct stream_encoder {
 
 typedef struct stream_encoder stream_encoder_t;
 
-static struct encoder_ops ops;
+static struct encoder_ops encoder_ops;
 
 static stream_encoder_t *
 s_new ()
@@ -26,13 +26,13 @@ s_new ()
     stream_encoder_t *self = malloc (sizeof *self);
     if (self)
         *self = (stream_encoder_t) {
-            .base = (encoder_t) { .ops = ops }
+            .base = (encoder_t) { .ops = encoder_ops }
         };
     return self;
 }
 
 static int
-s_encode (encoder_t *base, frame_t *frame, uint32_t *status)
+s_encode (encoder_t *base, frame_t *frame, encoder_status_t *status)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
@@ -56,7 +56,7 @@ s_encode (encoder_t *base, frame_t *frame, uint32_t *status)
 }
 
 static int
-s_read (encoder_t *base, iobuf_t *iobuf, uint32_t *status)
+s_read (encoder_t *base, iobuf_t *iobuf, encoder_status_t *status)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
@@ -94,7 +94,7 @@ s_buffer (encoder_t *base, const void **buffer, size_t *buffer_size)
 }
 
 static int
-s_advance (encoder_t *base, size_t n, uint32_t *status)
+s_advance (encoder_t *base, size_t n, encoder_status_t *status)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
@@ -112,7 +112,7 @@ s_advance (encoder_t *base, size_t n, uint32_t *status)
     return 0;
 }
 
-static uint32_t
+static encoder_status_t
 s_status (encoder_t *base)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
@@ -137,7 +137,7 @@ s_destroy (encoder_t **base_p)
     }
 }
 
-static struct encoder_ops ops = {
+static struct encoder_ops encoder_ops = {
     .encode = s_encode,
     .read = s_read,
     .buffer = s_buffer,

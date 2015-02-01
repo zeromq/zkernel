@@ -43,7 +43,7 @@ s_new ()
 }
 
 static int
-s_encode (encoder_t *base, frame_t *frame, uint32_t *status)
+s_encode (encoder_t *base, frame_t *frame, encoder_status_t *status)
 {
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;
     assert (self);
@@ -71,7 +71,7 @@ s_encode (encoder_t *base, frame_t *frame, uint32_t *status)
 }
 
 static int
-s_read (encoder_t *base, iobuf_t *iobuf, uint32_t *status)
+s_read (encoder_t *base, iobuf_t *iobuf, encoder_status_t *status)
 {
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;
     assert (self);
@@ -136,7 +136,7 @@ s_buffer (encoder_t *base, const void **buffer, size_t *buffer_size)
 }
 
 static int
-s_advance (encoder_t *base, size_t n, uint32_t *status)
+s_advance (encoder_t *base, size_t n, encoder_status_t *status)
 {
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;
     assert (self);
@@ -175,7 +175,7 @@ s_advance (encoder_t *base, size_t n, uint32_t *status)
     return 0;
 }
 
-static uint32_t
+static encoder_status_t
 s_status (encoder_t *base)
 {
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;

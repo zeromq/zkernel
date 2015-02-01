@@ -17,14 +17,16 @@
 #define ZKERNEL_ENCODER_READ_OK     0x02
 #define ZKERNEL_ENCODER_ERROR       0x04
 
+typedef uint32_t encoder_status_t;
+
 struct encoder;
 
 struct encoder_ops {
-    int (*encode) (struct encoder *self, frame_t *frame, uint32_t *status);
-    int (*read) (struct encoder *self, iobuf_t *iobuf, uint32_t *status);
+    int (*encode) (struct encoder *self, frame_t *frame, encoder_status_t *status);
+    int (*read) (struct encoder *self, iobuf_t *iobuf, encoder_status_t *status);
     int (*buffer) (struct encoder *self, const void **buffer, size_t *buffer_size);
-    int (*advance) (struct encoder *self, size_t n, uint32_t *status);
-    uint32_t (*status) (struct encoder *self);
+    int (*advance) (struct encoder *self, size_t n, encoder_status_t *status);
+    encoder_status_t (*status) (struct encoder *self);
     void (*destroy) (struct encoder **self_p);
 };
 
@@ -35,13 +37,13 @@ struct encoder {
 typedef struct encoder encoder_t;
 
 inline int
-encoder_encode (encoder_t *self, frame_t *frame, uint32_t *status)
+encoder_encode (encoder_t *self, frame_t *frame, encoder_status_t *status)
 {
     return self->ops.encode (self, frame, status);
 }
 
 inline int
-encoder_read (encoder_t *self, iobuf_t *iobuf, uint32_t *status)
+encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_status_t *status)
 {
     return self->ops.read (self, iobuf, status);
 }
@@ -53,12 +55,12 @@ encoder_buffer (encoder_t *self, const void **buffer, size_t *buffer_size)
 }
 
 inline int
-encoder_advance (encoder_t *self, size_t n, uint32_t *status)
+encoder_advance (encoder_t *self, size_t n, encoder_status_t *status)
 {
     return self->ops.advance (self, n, status);
 }
 
-inline uint32_t
+inline encoder_status_t
 encoder_status (encoder_t *self)
 {
     return self->ops.status (self);

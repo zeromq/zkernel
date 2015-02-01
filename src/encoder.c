@@ -10,18 +10,18 @@
 #include "encoder.h"
 
 extern inline int
-encoder_encode (encoder_t *self, frame_t *frame, uint32_t *status);
+encoder_encode (encoder_t *self, frame_t *frame, encoder_status_t *status);
 
 extern inline int
-encoder_read (encoder_t *self, iobuf_t *iobuf, uint32_t *status);
+encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_status_t *status);
 
 extern inline int
 encoder_buffer (encoder_t *self, const void **buffer, size_t *buffer_size);
 
 extern inline int
-encoder_advance (encoder_t *self, size_t n, uint32_t *status);
+encoder_advance (encoder_t *self, size_t n, encoder_status_t *status);
 
-extern inline uint32_t
+extern inline encoder_status_t
 encoder_status (encoder_t *self);
 
 void
