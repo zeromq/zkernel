@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 #include "iobuf.h"
-#include "frame.h"
+#include "pdu.h"
 
 #define DECODER_BUFFER_MASK 0xfffff000
 #define DECODER_READY       0x01
@@ -25,7 +25,7 @@ struct decoder_ops {
     int (*write) (struct decoder *self, iobuf_t *iobuf, decoder_status_t *status);
     int (*buffer) (struct decoder *self, void **buffer, size_t *buffer_size);
     int (*advance) (struct decoder *self, size_t n, decoder_status_t *status);
-    frame_t *(*decode) (struct decoder *self, decoder_status_t *status);
+    pdu_t *(*decode) (struct decoder *self, decoder_status_t *status);
     decoder_status_t (*status) (struct decoder *self);
     void (*destroy) (struct decoder **self_p);
 };
@@ -38,7 +38,7 @@ typedef struct decoder decoder_t;
 
 typedef decoder_t *decoder_constructor_t ();
 
-inline frame_t *
+inline pdu_t *
 decoder_decode (decoder_t *self, decoder_status_t *status)
 {
     return self->ops.decode (self, status);

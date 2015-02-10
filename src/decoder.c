@@ -9,7 +9,7 @@
 
 #include "decoder.h"
 
-extern inline frame_t *
+extern inline pdu_t *
 decoder_decode (decoder_t *self, decoder_status_t *status);
 
 extern inline int

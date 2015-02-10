@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 #include "iobuf.h"
-#include "frame.h"
+#include "pdu.h"
 #include "encoder.h"
 
 #define WAITING_FOR_FRAME   0
@@ -17,7 +17,7 @@ struct zmtp_v3_encoder {
     encoder_t base;
     int state;
     uint8_t buffer [9];
-    frame_t *frame;
+    pdu_t *pdu;
     uint8_t *ptr;
     size_t bytes_left;
 };
@@ -43,7 +43,7 @@ s_new ()
 }
 
 static int
-s_encode (encoder_t *base, frame_t *frame, encoder_status_t *status)
+s_encode (encoder_t *base, pdu_t *pdu, encoder_status_t *status)
 {
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;
     assert (self);
@@ -51,18 +51,18 @@ s_encode (encoder_t *base, frame_t *frame, encoder_status_t *status)
     if (self->state != WAITING_FOR_FRAME)
         return -1;
 
-    assert (self->frame == NULL);
-    self->frame = frame;
+    assert (self->pdu == NULL);
+    self->pdu = pdu;
 
     uint8_t *buffer = self->buffer;
     buffer [0] = 0;     // flags
-    if (frame->frame_size > 255) {
+    if (pdu->pdu_size > 255) {
         buffer [0] |= 0x02;
-        put_uint64 (buffer + 1, frame->frame_size);
+        put_uint64 (buffer + 1, pdu->pdu_size);
         self->bytes_left = 9;
     }
     else {
-        buffer [1] = (uint8_t) frame->frame_size;
+        buffer [1] = (uint8_t) pdu->pdu_size;
         self->bytes_left = 2;
     }
 
@@ -89,9 +89,9 @@ s_read (encoder_t *base, iobuf_t *iobuf, encoder_status_t *status)
         self->bytes_left -= n;
 
         if (self->bytes_left == 0) {
-            assert (self->frame);
-            self->ptr = self->frame->frame_data;
-            self->bytes_left = self->frame->frame_size;
+            assert (self->pdu);
+            self->ptr = self->pdu->pdu_data;
+            self->bytes_left = self->pdu->pdu_size;
             self->state = READING_BODY;
         }
     }
@@ -103,7 +103,7 @@ s_read (encoder_t *base, iobuf_t *iobuf, encoder_status_t *status)
         self->bytes_left -= n;
 
         if (self->bytes_left == 0) {
-            frame_destroy (&self->frame);
+            pdu_destroy (&self->pdu);
             self->state = WAITING_FOR_FRAME;
         }
     }
@@ -155,16 +155,16 @@ s_advance (encoder_t *base, size_t n, encoder_status_t *status)
 
     if (self->state == READING_HEADER) {
         if (self->bytes_left == 0) {
-            frame_t *frame = self->frame;
-            assert (frame);
-            self->ptr = frame->frame_data;
-            self->bytes_left = frame->frame_size;
+            pdu_t *pdu = self->pdu;
+            assert (pdu);
+            self->ptr = pdu->pdu_data;
+            self->bytes_left = pdu->pdu_size;
             self->state = READING_BODY;
         }
     }
 
     if (self->bytes_left == 0) {
-        frame_destroy (&self->frame);
+        pdu_destroy (&self->pdu);
         self->state = WAITING_FOR_FRAME;
         *status = ZKERNEL_ENCODER_READY;
     }
@@ -195,8 +195,8 @@ s_destroy (encoder_t **base_p)
 {
     if (*base_p) {
         zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) *base_p;
-        if (self->frame)
-            frame_destroy (&self->frame);
+        if (self->pdu)
+            pdu_destroy (&self->pdu);
         free (self);
         *base_p = NULL;
     }

@@ -7,11 +7,11 @@
 #include <string.h>
 
 #include "stream_decoder.h"
-#include "frame.h"
+#include "pdu.h"
 
 struct stream_decoder {
     decoder_t base;
-    frame_t *frame;
+    pdu_t *pdu;
 };
 
 typedef struct stream_decoder stream_decoder_t;
@@ -25,9 +25,9 @@ s_new ()
     if (self) {
         *self = (stream_decoder_t) {
             .base.ops = decoder_ops,
-            .frame = frame_new ()
+            .pdu = pdu_new ()
         };
-        if (self->frame == NULL) {
+        if (self->pdu == NULL) {
             free (self);
             self = NULL;
         }
@@ -41,17 +41,17 @@ s_write (decoder_t *self_, iobuf_t *iobuf, decoder_status_t *status)
     stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self);
 
-    frame_t *frame = self->frame;
-    if (frame == NULL)
+    pdu_t *pdu = self->pdu;
+    if (pdu == NULL)
         return -1;
 
-    frame->frame_size += iobuf_read (iobuf,
-        frame->frame_data, sizeof frame->frame_data - frame->frame_size);
+    pdu->pdu_size += iobuf_read (iobuf,
+        pdu->pdu_data, sizeof pdu->pdu_data - pdu->pdu_size);
 
     const size_t free_space =
-        sizeof frame->frame_data - frame->frame_size;
+        sizeof pdu->pdu_data - pdu->pdu_size;
     *status = free_space & DECODER_BUFFER_MASK;
-    if (frame->frame_size > 0)
+    if (pdu->pdu_size > 0)
         *status |= DECODER_READY;
     if (free_space > 0)
         *status |= DECODER_WRITE_OK;
@@ -65,12 +65,12 @@ s_buffer (decoder_t *self_, void **buffer, size_t *buffer_size)
     stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self);
 
-    frame_t *frame = self->frame;
-    if (frame == NULL)
+    pdu_t *pdu = self->pdu;
+    if (pdu == NULL)
         return -1;
 
-    *buffer = frame->frame_data + frame->frame_size;
-    *buffer_size = sizeof frame->frame_data - frame->frame_size;
+    *buffer = pdu->pdu_data + pdu->pdu_size;
+    *buffer_size = sizeof pdu->pdu_data - pdu->pdu_size;
 
     return 0;
 }
@@ -81,18 +81,18 @@ s_advance (decoder_t *self_, size_t n, decoder_status_t *status)
     stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self);
 
-    frame_t *frame = self->frame;
-    if (frame == NULL)
+    pdu_t *pdu = self->pdu;
+    if (pdu == NULL)
         return -1;
-    if (frame->frame_size + n > sizeof frame->frame_data)
+    if (pdu->pdu_size + n > sizeof pdu->pdu_data)
         return -1;
 
-    frame->frame_size += n;
+    pdu->pdu_size += n;
 
     const size_t free_space =
-        sizeof frame->frame_data - frame->frame_size;
+        sizeof pdu->pdu_data - pdu->pdu_size;
     *status = free_space & DECODER_BUFFER_MASK;
-    if (frame->frame_size > 0)
+    if (pdu->pdu_size > 0)
         *status |= DECODER_READY;
     if (free_space > 0)
         *status |= DECODER_WRITE_OK;
@@ -100,24 +100,24 @@ s_advance (decoder_t *self_, size_t n, decoder_status_t *status)
     return 0;
 }
 
-static frame_t *
+static pdu_t *
 s_decode (decoder_t *self_, decoder_status_t *status)
 {
     stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self != NULL);
 
-    frame_t *frame = self->frame;
-    if (frame == NULL)
+    pdu_t *pdu = self->pdu;
+    if (pdu == NULL)
         return NULL;
 
-    self->frame = frame_new ();
-    if (self->frame)
-        *status = (sizeof frame->frame_data & DECODER_BUFFER_MASK)
+    self->pdu = pdu_new ();
+    if (self->pdu)
+        *status = (sizeof pdu->pdu_data & DECODER_BUFFER_MASK)
                 | DECODER_WRITE_OK;
     else
         *status = DECODER_ERROR;
 
-    return frame;
+    return pdu;
 }
 
 static decoder_status_t
@@ -126,15 +126,15 @@ s_status (decoder_t *self_)
     stream_decoder_t *self = (stream_decoder_t *) self_;
     assert (self);
 
-    const frame_t *frame = self->frame;
-    if (frame == NULL)
+    const pdu_t *pdu = self->pdu;
+    if (pdu == NULL)
         return DECODER_ERROR;
     else {
         const size_t free_space =
-            sizeof frame->frame_data - frame->frame_size;
+            sizeof pdu->pdu_data - pdu->pdu_size;
         decoder_status_t status =
             free_space & DECODER_BUFFER_MASK;
-        if (frame->frame_size > 0)
+        if (pdu->pdu_size > 0)
             status |= DECODER_READY;
         if (free_space > 0 )
             status |= DECODER_WRITE_OK;

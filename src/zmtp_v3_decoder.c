@@ -8,14 +8,14 @@
 #include <stdlib.h>
 
 #include "iobuf.h"
-#include "frame.h"
+#include "pdu.h"
 #include "decoder.h"
 
 struct zmtp_v3_decoder {
     decoder_t base;
     int state;
     uint8_t buffer [9];
-    frame_t *frame;
+    pdu_t *pdu;
     uint8_t *ptr;
     size_t bytes_left;
 };
@@ -74,12 +74,12 @@ s_write (decoder_t *self_, iobuf_t *iobuf, decoder_status_t *status)
         self->ptr += n;
         self->bytes_left -= n;
         if (self->bytes_left == 0) {
-            const size_t frame_size = (size_t) s_decode_length (self->buffer);
-            self->frame = frame_new_with_size (frame_size);
-            if (self->frame == NULL)
+            const size_t pdu_size = (size_t) s_decode_length (self->buffer);
+            self->pdu = pdu_new_with_size (pdu_size);
+            if (self->pdu == NULL)
                 return -1;
-            self->ptr = self->frame->frame_data;
-            self->bytes_left = frame_size;
+            self->ptr = self->pdu->pdu_data;
+            self->bytes_left = pdu_size;
             self->state = DECODING_BODY;
         }
     }
@@ -147,7 +147,7 @@ s_advance (decoder_t *self_, size_t n, decoder_status_t *status)
     return 0;
 }
 
-static frame_t *
+static pdu_t *
 s_decode (decoder_t *self_, decoder_status_t *status)
 {
     zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
@@ -156,15 +156,15 @@ s_decode (decoder_t *self_, decoder_status_t *status)
     if (self->state != FRAME_READY)
         return NULL;
 
-    frame_t *frame = self->frame;
-    self->frame = NULL;
+    pdu_t *pdu = self->pdu;
+    self->pdu = NULL;
     self->state = DECODING_FLAGS;
     self->ptr = self->buffer;
     self->bytes_left = 1;
 
     *status = DECODER_WRITE_OK;
 
-    return frame;
+    return pdu;
 }
 
 static decoder_status_t
@@ -193,7 +193,7 @@ s_destroy (decoder_t **self_p)
     assert (self_p);
     if (*self_p) {
         zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) *self_p;
-        frame_destroy (&self->frame);
+        pdu_destroy (&self->pdu);
         free (self);
         *self_p = NULL;
     }

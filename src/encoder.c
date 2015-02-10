@@ -10,7 +10,7 @@
 #include "encoder.h"
 
 extern inline int
-encoder_encode (encoder_t *self, frame_t *frame, encoder_status_t *status);
+encoder_encode (encoder_t *self, pdu_t *pdu, encoder_status_t *status);
 
 extern inline int
 encoder_read (encoder_t *self, iobuf_t *iobuf, encoder_status_t *status);

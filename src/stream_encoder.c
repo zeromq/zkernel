@@ -6,14 +6,14 @@
 #include <stdlib.h>
 
 #include "iobuf.h"
-#include "frame.h"
+#include "pdu.h"
 #include "encoder.h"
 
 struct stream_encoder {
     encoder_t base;
     uint8_t *ptr;
     size_t bytes_left;
-    frame_t *frame;
+    pdu_t *pdu;
 };
 
 typedef struct stream_encoder stream_encoder_t;
@@ -32,19 +32,19 @@ s_new ()
 }
 
 static int
-s_encode (encoder_t *base, frame_t *frame, encoder_status_t *status)
+s_encode (encoder_t *base, pdu_t *pdu, encoder_status_t *status)
 {
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
 
-    if (self->frame) {
+    if (self->pdu) {
         assert (self->bytes_left == 0);
-        frame_destroy (&self->frame);
+        pdu_destroy (&self->pdu);
     }
 
-    self->frame = frame;
-    self->ptr = frame->frame_data;
-    self->bytes_left = frame->frame_size;
+    self->pdu = pdu;
+    self->ptr = pdu->pdu_data;
+    self->bytes_left = pdu->pdu_size;
 
     if (self->bytes_left == 0)
         *status = ZKERNEL_ENCODER_READY;
@@ -81,7 +81,7 @@ s_buffer (encoder_t *base, const void **buffer, size_t *buffer_size)
     stream_encoder_t *self = (stream_encoder_t *) base;
     assert (self);
 
-    if (self->frame) {
+    if (self->pdu) {
         *buffer = self->ptr;
         *buffer_size = self->bytes_left;
     }
@@ -130,8 +130,8 @@ s_destroy (encoder_t **base_p)
 {
     if (*base_p) {
         stream_encoder_t *self = (stream_encoder_t *) *base_p;
-        if (self->frame)
-            frame_destroy (&self->frame);
+        if (self->pdu)
+            pdu_destroy (&self->pdu);
         free (self);
         *base_p = NULL;
     }

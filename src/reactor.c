@@ -21,7 +21,7 @@
 #include "msg.h"
 #include "clock.h"
 #include "zkernel.h"
-#include "frame.h"
+#include "pdu.h"
 
 struct event_source {
     int fd;
@@ -241,8 +241,8 @@ s_loop (void *udata)
             while (msg) {
                 struct msg_t *next_msg = msg->next;
                 if (msg->msg_type == ZKERNEL_MSG_TYPE_FRAME) {
-                    frame_t *frame = (frame_t *) msg;
-                    io_object_t *io_object = frame->io_object;
+                    pdu_t *pdu = (pdu_t *) msg;
+                    io_object_t *io_object = pdu->io_object;
                     struct event_source *ev_src =
                         (struct event_source *) io_object->io_handle;
                     const int rc = io_object_message (io_object, msg);

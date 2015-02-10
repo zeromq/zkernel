@@ -12,7 +12,7 @@ extern inline int
 protocol_init (protocol_t *self, uint32_t *status);
 
 extern inline int
-protocol_encode (protocol_t *self, frame_t *frame, uint32_t *status);
+protocol_encode (protocol_t *self, pdu_t *pdu, uint32_t *status);
 
 extern inline int
 protocol_read (protocol_t *self, iobuf_t *iobuf, uint32_t *status);
@@ -23,7 +23,7 @@ protocol_read_buffer (protocol_t *self, const void **buffer, size_t *buffer_size
 extern inline int
 protocol_read_advance (protocol_t *self, size_t n, uint32_t *status);
 
-extern inline frame_t *
+extern inline pdu_t *
 protocol_decode (protocol_t *self, uint32_t *status);
 
 extern inline int

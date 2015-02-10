@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 #include "iobuf.h"
-#include "frame.h"
+#include "pdu.h"
 
 #define ZKERNEL_PROTOCOL_ENCODER_READY     0x01
 #define ZKERNEL_PROTOCOL_READ_OK           0x02
@@ -22,11 +22,11 @@ struct protocol;
 
 struct protocol_ops {
     int (*init) (struct protocol *self, uint32_t *status);
-    int (*encode) (struct protocol *self, frame_t *frame, uint32_t *status);
+    int (*encode) (struct protocol *self, pdu_t *pdu, uint32_t *status);
     int (*read) (struct protocol *self, iobuf_t *iobuf, uint32_t *status);
     int (*read_buffer) (struct protocol *self, const void **buffer, size_t *buffer_size);
     int (*read_advance) (struct protocol *self, size_t n, uint32_t *status);
-    frame_t *(*decode) (struct protocol *self, uint32_t *status);
+    pdu_t *(*decode) (struct protocol *self, uint32_t *status);
     int (*write) (struct protocol *self, iobuf_t *iobuf, uint32_t *status);
     int (*write_buffer) (struct protocol *self, void **buffer, size_t *buffer_size);
     int (*write_advance) (struct protocol *self, size_t n, uint32_t *status);
@@ -48,9 +48,9 @@ protocol_init (protocol_t *self, uint32_t *status)
 }
 
 inline int
-protocol_encode (protocol_t *self, frame_t *frame, uint32_t *status)
+protocol_encode (protocol_t *self, pdu_t *pdu, uint32_t *status)
 {
-    return self->ops.encode (self, frame, status);
+    return self->ops.encode (self, pdu, status);
 }
 
 inline int
@@ -71,7 +71,7 @@ protocol_read_advance (protocol_t *self, size_t n, uint32_t *status)
     return self->ops.read_advance (self, n, status);
 }
 
-inline frame_t *
+inline pdu_t *
 protocol_decode (protocol_t *self, uint32_t *status)
 {
     return self->ops.decode (self, status);

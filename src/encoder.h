@@ -9,7 +9,7 @@
 
 #include <stdint.h>
 
-#include "frame.h"
+#include "pdu.h"
 #include "iobuf.h"
 
 #define ZKERNEL_ENCODER_BUFFER_MASK 0xfffff000
@@ -22,7 +22,7 @@ typedef uint32_t encoder_status_t;
 struct encoder;
 
 struct encoder_ops {
-    int (*encode) (struct encoder *self, frame_t *frame, encoder_status_t *status);
+    int (*encode) (struct encoder *self, pdu_t *pdu, encoder_status_t *status);
     int (*read) (struct encoder *self, iobuf_t *iobuf, encoder_status_t *status);
     int (*buffer) (struct encoder *self, const void **buffer, size_t *buffer_size);
     int (*advance) (struct encoder *self, size_t n, encoder_status_t *status);
@@ -37,9 +37,9 @@ struct encoder {
 typedef struct encoder encoder_t;
 
 inline int
-encoder_encode (encoder_t *self, frame_t *frame, encoder_status_t *status)
+encoder_encode (encoder_t *self, pdu_t *pdu, encoder_status_t *status)
 {
-    return self->ops.encode (self, frame, status);
+    return self->ops.encode (self, pdu, status);
 }
 
 inline int

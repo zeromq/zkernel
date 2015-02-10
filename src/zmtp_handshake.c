@@ -91,7 +91,7 @@ s_init (protocol_t *base, uint32_t *status)
 }
 
 static int
-s_encode (protocol_t *base, frame_t *frame, uint32_t *status)
+s_encode (protocol_t *base, pdu_t *pdu, uint32_t *status)
 {
     return -1;
 }
@@ -128,7 +128,7 @@ s_read_advance (protocol_t *base, size_t n, uint32_t *status)
     return -1;
 }
 
-static frame_t *
+static pdu_t *
 s_decode (protocol_t *base, uint32_t *status)
 {
     return NULL;

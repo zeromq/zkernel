@@ -23,8 +23,8 @@
 struct tcp_session {
     io_object_t base;
     int fd;
-    frame_t *queue_head;
-    frame_t *queue_tail;
+    pdu_t *queue_head;
+    pdu_t *queue_tail;
     protocol_t *protocol;
     uint32_t protocol_status;
     iobuf_t *sendbuf;
@@ -159,19 +159,19 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
         }
 
         while ((self->protocol_status & ZKERNEL_PROTOCOL_DECODER_READY) != 0) {
-            frame_t *frame = protocol_decode (protocol, &self->protocol_status);
-            if (frame == NULL)
+            pdu_t *pdu = protocol_decode (protocol, &self->protocol_status);
+            if (pdu == NULL)
                 goto error;
-            frame->io_object = self_;
-            mailbox_enqueue (self->owner, (msg_t *) frame);
+            pdu->io_object = self_;
+            mailbox_enqueue (self->owner, (msg_t *) pdu);
         }
 
         while (self->queue_head && (self->protocol_status & ZKERNEL_PROTOCOL_ENCODER_READY) != 0) {
-            frame_t *frame = self->queue_head;
-            self->queue_head = (frame_t *) frame->base.next;
+            pdu_t *pdu = self->queue_head;
+            self->queue_head = (pdu_t *) pdu->base.next;
             if (self->queue_head == NULL)
                 self->queue_tail = NULL;
-            if (protocol_encode (protocol, frame, &self->protocol_status) == -1)
+            if (protocol_encode (protocol, pdu, &self->protocol_status) == -1)
                 goto error;
         }
 
@@ -315,14 +315,14 @@ s_message (io_object_t *self_, msg_t *msg)
     assert (self);
 
     if (msg->msg_type == ZKERNEL_MSG_TYPE_FRAME) {
-        frame_t *frame = (frame_t *) msg;
+        pdu_t *pdu = (pdu_t *) msg;
         if (self->queue_head == NULL)
-            self->queue_head = self->queue_tail = frame;
+            self->queue_head = self->queue_tail = pdu;
         else {
-            self->queue_tail->base.next = (msg_t *) frame;
-            self->queue_tail = frame;
+            self->queue_tail->base.next = (msg_t *) pdu;
+            self->queue_tail = pdu;
         }
-        frame->base.next = NULL;
+        pdu->base.next = NULL;
     }
     else
         msg_destroy (&msg);

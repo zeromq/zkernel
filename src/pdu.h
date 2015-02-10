@@ -13,22 +13,22 @@
 
 struct io_object;
 
-struct frame {
+struct pdu {
     msg_t base;
     struct io_object *io_object;
-    size_t frame_size;
-    uint8_t frame_data [64];
+    size_t pdu_size;
+    uint8_t pdu_data [64];
 };
 
-typedef struct frame frame_t;
+typedef struct pdu pdu_t;
 
-frame_t *
-    frame_new ();
+pdu_t *
+    pdu_new ();
 
-frame_t *
-    frame_new_with_size (size_t frame_size);
+pdu_t *
+    pdu_new_with_size (size_t pdu_size);
 
 void
-    frame_destroy (frame_t **self_p);
+    pdu_destroy (pdu_t **self_p);
 
 #endif
