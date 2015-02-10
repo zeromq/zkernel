@@ -98,7 +98,7 @@ process_msg (socket_t *self, msg_t **msg_p)
     *msg_p = NULL;
 
     switch (msg->msg_type) {
-    case ZKERNEL_MSG_TYPE_FRAME:
+    case ZKERNEL_MSG_TYPE_PDU:
         msg_destroy (&msg);
         break;
     case ZKERNEL_REGISTER:

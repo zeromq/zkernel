@@ -21,7 +21,7 @@
 #define ZKERNEL_READY_TO_SEND   18
 
 //  Frame ID
-#define ZKERNEL_MSG_TYPE_FRAME  32
+#define ZKERNEL_MSG_TYPE_PDU    32
 
 #define ZKERNEL_INPUT_READY     0x01
 #define ZKERNEL_OUTPUT_READY    0x02

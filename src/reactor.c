@@ -240,7 +240,7 @@ s_loop (void *udata)
             msg->next = prev;
             while (msg) {
                 struct msg_t *next_msg = msg->next;
-                if (msg->msg_type == ZKERNEL_MSG_TYPE_FRAME) {
+                if (msg->msg_type == ZKERNEL_MSG_TYPE_PDU) {
                     pdu_t *pdu = (pdu_t *) msg;
                     io_object_t *io_object = pdu->io_object;
                     struct event_source *ev_src =

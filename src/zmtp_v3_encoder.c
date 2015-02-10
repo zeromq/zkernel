@@ -9,7 +9,7 @@
 #include "pdu.h"
 #include "encoder.h"
 
-#define WAITING_FOR_FRAME   0
+#define WAITING_FOR_PDU     0
 #define READING_HEADER      1
 #define READING_BODY        2
 
@@ -37,7 +37,7 @@ s_new ()
     if (self)
         *self = (zmtp_v3_encoder_t) {
             .base = (encoder_t) { .ops = encoder_ops },
-            .state = WAITING_FOR_FRAME
+            .state = WAITING_FOR_PDU
         };
     return self;
 }
@@ -48,7 +48,7 @@ s_encode (encoder_t *base, pdu_t *pdu, encoder_status_t *status)
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;
     assert (self);
 
-    if (self->state != WAITING_FOR_FRAME)
+    if (self->state != WAITING_FOR_PDU)
         return -1;
 
     assert (self->pdu == NULL);
@@ -76,7 +76,7 @@ s_read (encoder_t *base, iobuf_t *iobuf, encoder_status_t *status)
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;
     assert (self);
 
-    if (self->state == WAITING_FOR_FRAME)
+    if (self->state == WAITING_FOR_PDU)
         return -1;
 
     assert (self->state == READING_HEADER
@@ -104,7 +104,7 @@ s_read (encoder_t *base, iobuf_t *iobuf, encoder_status_t *status)
 
         if (self->bytes_left == 0) {
             pdu_destroy (&self->pdu);
-            self->state = WAITING_FOR_FRAME;
+            self->state = WAITING_FOR_PDU;
         }
     }
 
@@ -123,7 +123,7 @@ s_buffer (encoder_t *base, const void **buffer, size_t *buffer_size)
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;
     assert (self);
 
-    if (self->state == WAITING_FOR_FRAME) {
+    if (self->state == WAITING_FOR_PDU) {
         *buffer = NULL;
         *buffer_size = 0;
     }
@@ -141,7 +141,7 @@ s_advance (encoder_t *base, size_t n, encoder_status_t *status)
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;
     assert (self);
 
-    if (self->state == WAITING_FOR_FRAME)
+    if (self->state == WAITING_FOR_PDU)
         return -1;
 
     assert (self->state == READING_HEADER
@@ -165,7 +165,7 @@ s_advance (encoder_t *base, size_t n, encoder_status_t *status)
 
     if (self->bytes_left == 0) {
         pdu_destroy (&self->pdu);
-        self->state = WAITING_FOR_FRAME;
+        self->state = WAITING_FOR_PDU;
         *status = ZKERNEL_ENCODER_READY;
     }
     else
@@ -181,7 +181,7 @@ s_status (encoder_t *base)
     zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) base;
     assert (self);
 
-    if (self->state == WAITING_FOR_FRAME)
+    if (self->state == WAITING_FOR_PDU)
         return ZKERNEL_ENCODER_READY;
     else
         return (self->bytes_left & ZKERNEL_ENCODER_BUFFER_MASK)

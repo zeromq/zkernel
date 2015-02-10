@@ -15,7 +15,7 @@ pdu_new ()
 {
     pdu_t *pdu = (pdu_t *) malloc (sizeof *pdu);
     if (pdu) {
-        pdu->base = (msg_t) { .msg_type = ZKERNEL_MSG_TYPE_FRAME };
+        pdu->base = (msg_t) { .msg_type = ZKERNEL_MSG_TYPE_PDU };
         pdu->pdu_size = 0;
     }
     return pdu;
@@ -26,7 +26,7 @@ pdu_new_with_size (size_t pdu_size)
 {
     pdu_t *pdu = (pdu_t *) malloc (sizeof *pdu);
     if (pdu) {
-        pdu->base = (msg_t) { .msg_type = ZKERNEL_MSG_TYPE_FRAME };
+        pdu->base = (msg_t) { .msg_type = ZKERNEL_MSG_TYPE_PDU };
         pdu->pdu_size = pdu_size;
     }
     return pdu;

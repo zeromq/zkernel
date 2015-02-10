@@ -25,7 +25,7 @@ typedef struct zmtp_v3_decoder zmtp_v3_decoder_t;
 #define DECODING_FLAGS      0
 #define DECODING_LENGTH     1
 #define DECODING_BODY       2
-#define FRAME_READY         3
+#define PDU_READY           3
 
 static size_t
 s_decode_length (const uint8_t *ptr);
@@ -90,13 +90,13 @@ s_write (decoder_t *self_, iobuf_t *iobuf, decoder_status_t *status)
         self->ptr += n;
         self->bytes_left -= n;
         if (self->bytes_left == 0)
-            self->state = FRAME_READY;
+            self->state = PDU_READY;
     }
 
     *status = 0;
     if (self->state == DECODING_BODY)
         *status |= self->bytes_left & DECODER_BUFFER_MASK;
-    if (self->state == FRAME_READY)
+    if (self->state == PDU_READY)
         *status |= DECODER_READY;
     else
         *status |= DECODER_WRITE_OK;
@@ -134,12 +134,12 @@ s_advance (decoder_t *self_, size_t n, decoder_status_t *status)
     self->bytes_left -= n;
 
     if (self->bytes_left == 0)
-        self->state = FRAME_READY;
+        self->state = PDU_READY;
 
     *status = 0;
     if (self->state == DECODING_BODY)
         *status |= self->bytes_left & DECODER_BUFFER_MASK;
-    if (self->state == FRAME_READY)
+    if (self->state == PDU_READY)
         *status |= DECODER_READY;
     else
         *status |= DECODER_WRITE_OK;
@@ -153,7 +153,7 @@ s_decode (decoder_t *self_, decoder_status_t *status)
     zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
 
-    if (self->state != FRAME_READY)
+    if (self->state != PDU_READY)
         return NULL;
 
     pdu_t *pdu = self->pdu;
@@ -179,7 +179,7 @@ s_status (decoder_t *self_)
         decoder_status_t status = 0;
         if (self->state == DECODING_BODY)
             status |= self->bytes_left & DECODER_BUFFER_MASK;
-        if (self->state == FRAME_READY)
+        if (self->state == PDU_READY)
             status |= DECODER_READY;
         else
             status |= DECODER_WRITE_OK;

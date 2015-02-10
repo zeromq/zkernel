@@ -314,7 +314,7 @@ s_message (io_object_t *self_, msg_t *msg)
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
 
-    if (msg->msg_type == ZKERNEL_MSG_TYPE_FRAME) {
+    if (msg->msg_type == ZKERNEL_MSG_TYPE_PDU) {
         pdu_t *pdu = (pdu_t *) msg;
         if (self->queue_head == NULL)
             self->queue_head = self->queue_tail = pdu;
