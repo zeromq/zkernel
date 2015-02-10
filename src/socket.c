@@ -128,10 +128,10 @@ process_msg (socket_t *self, msg_t **msg_p)
 
 int
 socket_bind (socket_t *self, unsigned short port,
-        codec_constructor_t *codec_constructor)
+        protocol_constructor_t *protocol_constructor)
 {
     tcp_listener_t *listener =
-        tcp_listener_new (codec_constructor, &self->mailbox_ifc);
+        tcp_listener_new (protocol_constructor, &self->mailbox_ifc);
     if (!listener)
         goto fail;
     int rc = tcp_listener_bind (listener, port);
@@ -153,12 +153,12 @@ fail:
 
 int
 socket_connect (socket_t *self, unsigned short port,
-        codec_constructor_t *codec_constructor)
+        protocol_constructor_t *protocol_constructor)
 {
     assert (self);
 
     tcp_connector_t *connector =
-        tcp_connector_new (codec_constructor, &self->mailbox_ifc);
+        tcp_connector_new (protocol_constructor, &self->mailbox_ifc);
     if (!connector)
         return -1;
     const int rc = tcp_connector_connect (connector, port);

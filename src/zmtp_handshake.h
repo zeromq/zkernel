@@ -7,14 +7,14 @@
 #ifndef __ZMTP_HANDSHAKE_H_INCLUDED__
 #define __ZMTP_HANDSHAKE_H_INCLUDED__
 
-#include "codec.h"
+#include "protocol.h"
 
 typedef struct zmtp_handshake zmtp_handshake_t;
 
 zmtp_handshake_t *
     zmtp_handshake_new ();
 
-codec_t *
-    zmtp_handshake_new_codec ();
+protocol_t *
+    zmtp_handshake_new_protocol ();
 
 #endif

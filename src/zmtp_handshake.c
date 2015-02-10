@@ -26,12 +26,12 @@ struct state {
 typedef struct state state_t;
 
 struct zmtp_handshake {
-    codec_t base;
+    protocol_t base;
     int error;
     state_t state;
     iobuf_t *sendbuf;
     iobuf_t *recvbuf;
-    codec_t *next_stage;
+    protocol_t *next_stage;
 };
 
 typedef state_t (state_fn_t) (zmtp_handshake_t *, iobuf_t *);
@@ -43,7 +43,7 @@ static state_fn_t
     receive_zmtp_v2_greeting,
     receive_zmtp_v3_greeting;
 
-static struct codec_ops codec_ops;
+static struct protocol_ops protocol_ops;
 
 zmtp_handshake_t *
 zmtp_handshake_new ()
@@ -52,7 +52,7 @@ zmtp_handshake_new ()
         (zmtp_handshake_t *) malloc (sizeof *self);
     if (self) {
         *self = (zmtp_handshake_t) {
-            .base.ops = codec_ops,
+            .base.ops = protocol_ops,
             .state.write_fn = receive_signature_a,
             .sendbuf = iobuf_new (zmtp_v3_greeting_size),
             .recvbuf = iobuf_new (zmtp_v3_greeting_size),
@@ -69,14 +69,14 @@ zmtp_handshake_new ()
     return self;
 }
 
-codec_t *
-zmtp_handshake_new_codec ()
+protocol_t *
+zmtp_handshake_new_protocol ()
 {
-    return (codec_t *) zmtp_handshake_new ();
+    return (protocol_t *) zmtp_handshake_new ();
 }
 
 static int
-s_init (codec_t *base, uint32_t *status)
+s_init (protocol_t *base, uint32_t *status)
 {
     zmtp_handshake_t *self = (zmtp_handshake_t *) base;
     assert (self);
@@ -85,19 +85,19 @@ s_init (codec_t *base, uint32_t *status)
     iobuf_write (self->sendbuf, signature, sizeof signature);
     assert (iobuf_available (self->sendbuf) == sizeof signature);
 
-    *status = ZKERNEL_CODEC_READ_OK | ZKERNEL_CODEC_WRITE_OK;
+    *status = ZKERNEL_PROTOCOL_READ_OK | ZKERNEL_PROTOCOL_WRITE_OK;
 
     return 0;
 }
 
 static int
-s_encode (codec_t *base, frame_t *frame, uint32_t *status)
+s_encode (protocol_t *base, frame_t *frame, uint32_t *status)
 {
     return -1;
 }
 
 static int
-s_read (codec_t *base, iobuf_t *iobuf, uint32_t *status)
+s_read (protocol_t *base, iobuf_t *iobuf, uint32_t *status)
 {
     zmtp_handshake_t *self = (zmtp_handshake_t *) base;
     assert (self);
@@ -105,37 +105,37 @@ s_read (codec_t *base, iobuf_t *iobuf, uint32_t *status)
     iobuf_copy_all (iobuf, self->sendbuf);
     *status = 0;
     if (iobuf_available (self->sendbuf) > 0)
-        *status |= ZKERNEL_CODEC_READ_OK;
+        *status |= ZKERNEL_PROTOCOL_READ_OK;
     if (self->state.write_fn != NULL)
-        *status |= ZKERNEL_CODEC_WRITE_OK;
+        *status |= ZKERNEL_PROTOCOL_WRITE_OK;
     /*
     if (self->next_stage != NULL)
-        *status |= ZKERNEL_CODEC_NEXT_STAGE;
+        *status |= ZKERNEL_PROTOCOL_NEXT_STAGE;
     */
 
     return 0;
 }
 
 static int
-s_read_buffer (codec_t *base, const void **buffer, size_t *buffer_size)
+s_read_buffer (protocol_t *base, const void **buffer, size_t *buffer_size)
 {
     return -1;
 }
 
 static int
-s_read_advance (codec_t *base, size_t n, uint32_t *status)
+s_read_advance (protocol_t *base, size_t n, uint32_t *status)
 {
     return -1;
 }
 
 static frame_t *
-s_decode (codec_t *base, uint32_t *status)
+s_decode (protocol_t *base, uint32_t *status)
 {
     return NULL;
 }
 
 static int
-s_write (codec_t *base, iobuf_t *iobuf, uint32_t *status)
+s_write (protocol_t *base, iobuf_t *iobuf, uint32_t *status)
 {
     zmtp_handshake_t *self = (zmtp_handshake_t *) base;
     assert (self);
@@ -151,31 +151,31 @@ s_write (codec_t *base, iobuf_t *iobuf, uint32_t *status)
         if (iobuf_available (self->sendbuf) == 0)
             *status = 0;  //  TODO: Indicate next stage is ready
         else
-            *status |= ZKERNEL_CODEC_READ_OK;
+            *status |= ZKERNEL_PROTOCOL_READ_OK;
     }
     else {
-        *status = ZKERNEL_CODEC_WRITE_OK;
+        *status = ZKERNEL_PROTOCOL_WRITE_OK;
         if (iobuf_available (self->sendbuf) > 0)
-            *status |= ZKERNEL_CODEC_READ_OK;
+            *status |= ZKERNEL_PROTOCOL_READ_OK;
     }
 
     return 0;
 }
 
 static int
-s_write_buffer (codec_t *base, void **buffer, size_t *buffer_size)
+s_write_buffer (protocol_t *base, void **buffer, size_t *buffer_size)
 {
     return -1;
 }
 
 static int
-s_write_advance (codec_t *base, size_t n, uint32_t *status)
+s_write_advance (protocol_t *base, size_t n, uint32_t *status)
 {
     return -1;
 }
 
 static void
-s_destroy (codec_t **base_p)
+s_destroy (protocol_t **base_p)
 {
     assert (base_p);
     if (*base_p) {
@@ -275,7 +275,7 @@ receive_zmtp_v3_greeting (zmtp_handshake_t *self, iobuf_t *iobuf)
     return (state_t) { NULL };
 }
 
-static struct codec_ops codec_ops = {
+static struct protocol_ops protocol_ops = {
     .init = s_init,
     .encode = s_encode,
     .read = s_read,

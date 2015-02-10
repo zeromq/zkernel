@@ -7,7 +7,7 @@
 #ifndef __SOCKET_H_INCLUDED__
 #define __SOCKET_H_INCLUDED__
 
-#include "codec.h"
+#include "protocol.h"
 
 typedef struct socket socket_t;
 
@@ -18,10 +18,10 @@ void
     socket_destroy (socket_t **self_p);
 
 int
-    socket_bind (socket_t *self, unsigned short port, codec_constructor_t *codec_constructor);
+    socket_bind (socket_t *self, unsigned short port, protocol_constructor_t *protocol_constructor);
 
 int
-    socket_connect (socket_t *self, unsigned short port, codec_constructor_t *codec_constructor);
+    socket_connect (socket_t *self, unsigned short port, protocol_constructor_t *protocol_constructor);
 
 int
     socket_send (socket_t *self, const char *data, size_t size);

@@ -8,13 +8,13 @@
 #define __TCP_LISTENER_H_INCLUDED__
 
 #include "mailbox.h"
-#include "codec.h"
+#include "protocol.h"
 
 typedef struct tcp_listener tcp_listener_t;
 
 tcp_listener_t *
     tcp_listener_new (
-            codec_constructor_t *codec_constructor, struct mailbox *owner);
+            protocol_constructor_t *protocol_constructor, struct mailbox *owner);
 
 void
     tcp_listener_destroy (tcp_listener_t **self_p);
