@@ -18,15 +18,15 @@
 #include "tcp_session.h"
 #include "msg.h"
 #include "zkernel.h"
-#include "protocol.h"
+#include "protocol_engine.h"
 
 struct tcp_session {
     io_object_t base;
     int fd;
     pdu_t *queue_head;
     pdu_t *queue_tail;
-    protocol_t *protocol;
-    uint32_t protocol_status;
+    protocol_engine_t *protocol_engine;
+    uint32_t protocol_engine_status;
     iobuf_t *sendbuf;
     iobuf_t *recvbuf;
     mailbox_t *owner;
@@ -57,7 +57,7 @@ static struct io_object_ops ops = {
 };
 
 tcp_session_t *
-tcp_session_new (int fd, protocol_t *protocol, mailbox_t *owner)
+tcp_session_new (int fd, protocol_engine_t *protocol_engine, mailbox_t *owner)
 {
     const size_t min_buffer_size = 64;
 
@@ -68,12 +68,12 @@ tcp_session_new (int fd, protocol_t *protocol, mailbox_t *owner)
         *self = (tcp_session_t) {
             .base.ops = ops,
             .fd = fd,
-            .protocol = protocol,
+            .protocol_engine = protocol_engine,
             .sendbuf = iobuf_new (buffer_size),
             .recvbuf = iobuf_new (buffer_size),
             .owner = owner
         };
-        if (protocol_init (protocol, &self->protocol_status) == -1)
+        if (protocol_engine_init (protocol_engine, &self->protocol_engine_status) == -1)
             goto error;
         if (self->sendbuf == NULL || self->recvbuf == NULL)
             goto error;
@@ -82,8 +82,8 @@ tcp_session_new (int fd, protocol_t *protocol, mailbox_t *owner)
 
 error:
     close (self->fd);
-    if (self->protocol)
-        protocol_destroy (&self->protocol);
+    if (self->protocol_engine)
+        protocol_engine_destroy (&self->protocol_engine);
     if (self->sendbuf)
         iobuf_destroy (&self->sendbuf);
     if (self->recvbuf)
@@ -106,7 +106,7 @@ tcp_session_destroy (tcp_session_t **self_p)
             msg = next;
         }
         close (self->fd);
-        protocol_destroy (&self->protocol);
+        protocol_engine_destroy (&self->protocol_engine);
         iobuf_destroy (&self->sendbuf);
         iobuf_destroy (&self->recvbuf);
         free (self);
@@ -145,7 +145,7 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
 
-    protocol_t *protocol = self->protocol;
+    protocol_engine_t *protocol_engine = self->protocol_engine;
 
     if ((io_flags & ZKERNEL_IO_ERROR) != 0)
         goto error;
@@ -154,48 +154,48 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
         if ((io_flags & ZKERNEL_INPUT_READY) != 0) {
             if (s_input (self) == -1)
                 goto error;
-            if ((self->protocol_status & ZKERNEL_PROTOCOL_WRITE_OK) != 0)
+            if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_WRITE_OK) != 0)
                 io_flags &= ~ZKERNEL_INPUT_READY;
         }
 
-        while ((self->protocol_status & ZKERNEL_PROTOCOL_DECODER_READY) != 0) {
-            pdu_t *pdu = protocol_decode (protocol, &self->protocol_status);
+        while ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_DECODER_READY) != 0) {
+            pdu_t *pdu = protocol_engine_decode (protocol_engine, &self->protocol_engine_status);
             if (pdu == NULL)
                 goto error;
             pdu->io_object = self_;
             mailbox_enqueue (self->owner, (msg_t *) pdu);
         }
 
-        while (self->queue_head && (self->protocol_status & ZKERNEL_PROTOCOL_ENCODER_READY) != 0) {
+        while (self->queue_head && (self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_ENCODER_READY) != 0) {
             pdu_t *pdu = self->queue_head;
             self->queue_head = (pdu_t *) pdu->base.next;
             if (self->queue_head == NULL)
                 self->queue_tail = NULL;
-            if (protocol_encode (protocol, pdu, &self->protocol_status) == -1)
+            if (protocol_engine_encode (protocol_engine, pdu, &self->protocol_engine_status) == -1)
                 goto error;
         }
 
         if ((io_flags & ZKERNEL_OUTPUT_READY) != 0) {
             if (s_output (self) == -1)
                 goto error;
-            if ((self->protocol_status & ZKERNEL_PROTOCOL_READ_OK) != 0)
+            if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_READ_OK) != 0)
                 io_flags &= ~ZKERNEL_OUTPUT_READY;
         }
 
-        uint32_t mask = self->protocol_status;
+        uint32_t mask = self->protocol_engine_status;
         if ((io_flags & ZKERNEL_INPUT_READY) == 0)
-            mask &= ~ZKERNEL_PROTOCOL_WRITE_OK;
+            mask &= ~ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
         if ((io_flags & ZKERNEL_OUTPUT_READY) == 0)
-            mask &= ~ZKERNEL_PROTOCOL_READ_OK;
+            mask &= ~ZKERNEL_PROTOCOL_ENGINE_READ_OK;
 
-        if ((self->protocol_status & mask) == 0)
+        if ((self->protocol_engine_status & mask) == 0)
             break;
     }
 
     int io_mask = 0;
-    if ((self->protocol_status & ZKERNEL_PROTOCOL_WRITE_OK) != 0)
+    if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_WRITE_OK) != 0)
         io_mask |= ZKERNEL_POLLIN;
-    if ((self->protocol_status & ZKERNEL_PROTOCOL_READ_OK) != 0 || iobuf_available (self->sendbuf) > 0)
+    if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_READ_OK) != 0 || iobuf_available (self->sendbuf) > 0)
         io_mask |= ZKERNEL_POLLOUT;
 
     return io_mask;
@@ -209,18 +209,18 @@ error:
 static int
 s_input (tcp_session_t *self)
 {
-    protocol_t *protocol = self->protocol;
+    protocol_engine_t *protocol_engine = self->protocol_engine;
     iobuf_t *recvbuf = self->recvbuf;
 
-    while ((self->protocol_status & ZKERNEL_PROTOCOL_WRITE_OK) != 0) {
+    while ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_WRITE_OK) != 0) {
         if (iobuf_available (recvbuf) > 0) {
-            if (protocol_write (protocol, recvbuf, &self->protocol_status) != 0)
+            if (protocol_engine_write (protocol_engine, recvbuf, &self->protocol_engine_status) != 0)
                 return -1;
         }
         else {
             void *buffer;
             size_t buffer_size;
-            if (protocol_write_buffer (protocol, &buffer, &buffer_size) == -1)
+            if (protocol_engine_write_buffer (protocol_engine, &buffer, &buffer_size) == -1)
                 return -1;
             if (buffer_size > 256) {
                 const ssize_t rc = recv (self->fd, buffer, buffer_size, 0);
@@ -232,8 +232,8 @@ s_input (tcp_session_t *self)
                     else
                         return -1;
                 }
-                if (protocol_write_advance (
-                        protocol, (size_t) rc, &self->protocol_status) != 0)
+                if (protocol_engine_write_advance (
+                        protocol_engine, (size_t) rc, &self->protocol_engine_status) != 0)
                     return -1;
             }
             else {
@@ -257,7 +257,7 @@ s_input (tcp_session_t *self)
 static int
 s_output (tcp_session_t *self)
 {
-    protocol_t *protocol = self->protocol;
+    protocol_engine_t *protocol_engine = self->protocol_engine;
     iobuf_t *sendbuf = self->sendbuf;
 
     while (iobuf_available (sendbuf)) {
@@ -270,10 +270,10 @@ s_output (tcp_session_t *self)
         }
     }
 
-    while ((self->protocol_status & ZKERNEL_PROTOCOL_READ_OK) != 0) {
+    while ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_READ_OK) != 0) {
         const void *buffer;
         size_t buffer_size;
-        if (protocol_read_buffer (protocol, &buffer, &buffer_size) == -1)
+        if (protocol_engine_read_buffer (protocol_engine, &buffer, &buffer_size) == -1)
             return -1;
         if (buffer_size > 256) {
             assert (buffer);
@@ -284,13 +284,13 @@ s_output (tcp_session_t *self)
                 else
                     return -1;
             }
-            if (protocol_read_advance (
-                    protocol, (size_t) rc, &self->protocol_status) != 0)
+            if (protocol_engine_read_advance (
+                    protocol_engine, (size_t) rc, &self->protocol_engine_status) != 0)
                 return -1;
         }
         else {
             iobuf_reset (sendbuf);
-            const int rc = protocol_read (protocol, sendbuf, &self->protocol_status);
+            const int rc = protocol_engine_read (protocol_engine, sendbuf, &self->protocol_engine_status);
             if (rc == -1)
                 return -1;
             while (iobuf_available (sendbuf)) {
