@@ -145,8 +145,6 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
 
-    protocol_engine_t *protocol_engine = self->protocol_engine;
-
     if ((io_flags & ZKERNEL_IO_ERROR) != 0)
         goto error;
 
@@ -159,7 +157,7 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
         }
 
         while ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_DECODER_READY) != 0) {
-            pdu_t *pdu = protocol_engine_decode (protocol_engine, &self->protocol_engine_status);
+            pdu_t *pdu = protocol_engine_decode (self->protocol_engine, &self->protocol_engine_status);
             if (pdu == NULL)
                 goto error;
             pdu->io_object = self_;
@@ -171,7 +169,7 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
             self->queue_head = (pdu_t *) pdu->base.next;
             if (self->queue_head == NULL)
                 self->queue_tail = NULL;
-            if (protocol_engine_encode (protocol_engine, pdu, &self->protocol_engine_status) == -1)
+            if (protocol_engine_encode (self->protocol_engine, pdu, &self->protocol_engine_status) == -1)
                 goto error;
         }
 
@@ -180,6 +178,19 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
                 goto error;
             if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_READ_OK) != 0)
                 io_flags &= ~ZKERNEL_OUTPUT_READY;
+        }
+
+        if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_RETIRED) != 0) {
+            protocol_engine_t *succ =
+                protocol_engine_successor (self->protocol_engine);
+            if (succ == NULL)
+                goto error;
+            protocol_engine_destroy (&self->protocol_engine);
+            self->protocol_engine = succ;
+            const int rc = protocol_engine_init (
+                self->protocol_engine, &self->protocol_engine_status);
+            if (rc)
+                goto error;
         }
 
         uint32_t mask = self->protocol_engine_status;
