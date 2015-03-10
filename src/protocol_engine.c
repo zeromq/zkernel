@@ -35,6 +35,9 @@ protocol_engine_write_buffer (protocol_engine_t *self, void **buffer, size_t *bu
 extern inline int
 protocol_engine_write_advance (protocol_engine_t *self, size_t n, uint32_t *status);
 
+extern inline protocol_engine_t *
+protocol_engine_successor (protocol_engine_t *self);
+
 void
 protocol_engine_destroy (protocol_engine_t **self_p)
 {
