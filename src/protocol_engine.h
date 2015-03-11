@@ -17,7 +17,7 @@
 #define ZKERNEL_PROTOCOL_ENGINE_DECODER_READY     0x04
 #define ZKERNEL_PROTOCOL_ENGINE_WRITE_OK          0x08
 #define ZKERNEL_PROTOCOL_ENGINE_ERROR             0x10
-#define ZKERNEL_PROTOCOL_ENGINE_RETIRED         0x20
+#define ZKERNEL_PROTOCOL_ENGINE_STOPPED         0x20
 
 struct protocol_engine;
 
@@ -31,7 +31,7 @@ struct protocol_engine_ops {
     int (*write) (struct protocol_engine *self, iobuf_t *iobuf, uint32_t *status);
     int (*write_buffer) (struct protocol_engine *self, void **buffer, size_t *buffer_size);
     int (*write_advance) (struct protocol_engine *self, size_t n, uint32_t *status);
-    struct protocol_engine *(*successor) (struct protocol_engine *self);
+    int (*next) (struct protocol_engine **self_p, uint32_t *status);
     void (*destroy) (struct protocol_engine **self_p);
 };
 
@@ -97,14 +97,8 @@ protocol_engine_write_advance (protocol_engine_t *self, size_t n, uint32_t *stat
     return self->ops.write_advance (self, n, status);
 }
 
-inline protocol_engine_t *
-protocol_engine_successor (protocol_engine_t *self)
-{
-    if (self->ops.successor)
-        return self->ops.successor (self);
-    else
-        return NULL;
-}
+int
+    protocol_engine_next (protocol_engine_t **self_p, uint32_t *status);
 
 void
     protocol_engine_destroy (protocol_engine_t **self_p);

@@ -180,16 +180,10 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
                 io_flags &= ~ZKERNEL_OUTPUT_READY;
         }
 
-        if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_RETIRED) != 0) {
-            protocol_engine_t *succ =
-                protocol_engine_successor (self->protocol_engine);
-            if (succ == NULL)
-                goto error;
-            protocol_engine_destroy (&self->protocol_engine);
-            self->protocol_engine = succ;
-            const int rc = protocol_engine_init (
-                self->protocol_engine, &self->protocol_engine_status);
-            if (rc)
+        if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_STOPPED) != 0) {
+            const int rc = protocol_engine_next (
+                &self->protocol_engine, &self->protocol_engine_status);
+            if (rc == -1)
                 goto error;
         }
 
