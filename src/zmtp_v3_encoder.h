@@ -20,7 +20,7 @@ zmtp_v3_encoder_t *
     zmtp_v3_encoder_new ();
 
 int
-    zmtp_v3_encoder_putms (
+    zmtp_v3_encoder_putmsg (
         zmtp_v3_encoder_t *self, pdu_t *pdu, zmtp_v3_encoder_status_t *status);
 
 int

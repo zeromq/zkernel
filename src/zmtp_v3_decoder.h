@@ -19,7 +19,7 @@ zmtp_v3_decoder_t *
     zmtp_v3_decoder_new ();
 
 int
-    zmp_v3_decoder_write (
+    zmtp_v3_decoder_write (
         zmtp_v3_decoder_t *self, iobuf_t *iobuf, zmtp_v3_decoder_status_t *status);
 
 int
