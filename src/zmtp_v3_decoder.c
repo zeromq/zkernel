@@ -9,11 +9,11 @@
 
 #include "iobuf.h"
 #include "pdu.h"
-#include "decoder.h"
+#include "zmtp_v3_decoder.h"
 
 struct zmtp_v3_decoder {
-    decoder_t base;
     int state;
+    size_t buffer_threshold;
     uint8_t buffer [9];
     pdu_t *pdu;
     uint8_t *ptr;
@@ -30,17 +30,15 @@ typedef struct zmtp_v3_decoder zmtp_v3_decoder_t;
 static size_t
 s_decode_length (const uint8_t *ptr);
 
-static struct decoder_ops decoder_ops;
-
-static zmtp_v3_decoder_t *
-s_new ()
+zmtp_v3_decoder_t *
+zmtp_v3_decoder_new ()
 {
     zmtp_v3_decoder_t *self =
         (zmtp_v3_decoder_t *) malloc (sizeof *self);
     if (self) {
         *self = (zmtp_v3_decoder_t) {
-            .base = (decoder_t) { .ops = decoder_ops },
             .state = DECODING_FLAGS,
+            .buffer_threshold = 4096,
             .ptr = self->buffer,
             .bytes_left = 1
         };
@@ -48,11 +46,14 @@ s_new ()
     return self;
 }
 
-static int
-s_write (decoder_t *self_, iobuf_t *iobuf, decoder_status_t *status)
+int
+zmp_v3_decoder_write (
+    zmtp_v3_decoder_t *self, iobuf_t *iobuf, zmtp_v3_decoder_status_t *status)
 {
-    zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
+
+    if (self->state == PDU_READY)
+        return -1;
 
     if (self->state == DECODING_FLAGS) {
         const size_t n =
@@ -93,21 +94,21 @@ s_write (decoder_t *self_, iobuf_t *iobuf, decoder_status_t *status)
             self->state = PDU_READY;
     }
 
-    *status = 0;
-    if (self->state == DECODING_BODY)
-        *status |= self->bytes_left & DECODER_BUFFER_MASK;
     if (self->state == PDU_READY)
-        *status |= DECODER_READY;
-    else
-        *status |= DECODER_WRITE_OK;
+        *status = ZMTP_V3_DECODER_READY;
+    else {
+        *status = ZMTP_V3_DECODER_WRITE_OK;
+        if (self->bytes_left >= self->buffer_threshold)
+            *status |= ZMTP_V3_DECODER_BUFFER_FLAG;
+    }
 
     return 0;
 }
 
-static int
-s_buffer (decoder_t *self_, void **buffer, size_t *buffer_size)
+int
+zmtp_v3_decoder_buffer (
+    zmtp_v3_decoder_t *self, void **buffer, size_t *buffer_size)
 {
-    zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
 
     if (self->state != DECODING_BODY)
@@ -119,10 +120,10 @@ s_buffer (decoder_t *self_, void **buffer, size_t *buffer_size)
     }
 }
 
-static int
-s_advance (decoder_t *self_, size_t n, decoder_status_t *status)
+int
+zmtp_v3_decoder_advance (
+    zmtp_v3_decoder_t *self, size_t n, zmtp_v3_decoder_status_t *status)
 {
-    zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
 
     if (self->state != DECODING_BODY)
@@ -136,21 +137,21 @@ s_advance (decoder_t *self_, size_t n, decoder_status_t *status)
     if (self->bytes_left == 0)
         self->state = PDU_READY;
 
-    *status = 0;
-    if (self->state == DECODING_BODY)
-        *status |= self->bytes_left & DECODER_BUFFER_MASK;
     if (self->state == PDU_READY)
-        *status |= DECODER_READY;
-    else
-        *status |= DECODER_WRITE_OK;
+        *status = ZMTP_V3_DECODER_READY;
+    else {
+        *status = ZMTP_V3_DECODER_WRITE_OK;
+        if (self->bytes_left > self->buffer_threshold)
+            *status |= ZMTP_V3_DECODER_BUFFER_FLAG;
+    }
 
     return 0;
 }
 
-static pdu_t *
-s_decode (decoder_t *self_, decoder_status_t *status)
+pdu_t *
+zmtp_v3_decoder_getmsg (
+    zmtp_v3_decoder_t *self, zmtp_v3_decoder_status_t *status)
 {
-    zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
 
     if (self->state != PDU_READY)
@@ -162,33 +163,30 @@ s_decode (decoder_t *self_, decoder_status_t *status)
     self->ptr = self->buffer;
     self->bytes_left = 1;
 
-    *status = DECODER_WRITE_OK;
+    *status = ZMTP_V3_DECODER_WRITE_OK;
 
     return pdu;
 }
 
-static decoder_status_t
-s_status (decoder_t *self_)
+void
+zmtp_v3_decoder_set_buffer_threshold (
+    zmtp_v3_decoder_t *self, size_t buffer_threshold, zmtp_v3_decoder_status_t *status)
 {
-    zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) self_;
     assert (self);
 
-    if (self->state == DECODING_LENGTH && self->bytes_left == 0)
-        return DECODER_ERROR;
+    self->buffer_threshold = buffer_threshold;
+
+    if (self->state == PDU_READY)
+        *status = ZMTP_V3_DECODER_READY;
     else {
-        decoder_status_t status = 0;
-        if (self->state == DECODING_BODY)
-            status |= self->bytes_left & DECODER_BUFFER_MASK;
-        if (self->state == PDU_READY)
-            status |= DECODER_READY;
-        else
-            status |= DECODER_WRITE_OK;
-        return status;
+        *status = ZMTP_V3_DECODER_WRITE_OK;
+        if (self->bytes_left > self->buffer_threshold)
+            *status |= ZMTP_V3_DECODER_BUFFER_FLAG;
     }
 }
 
-static void
-s_destroy (decoder_t **self_p)
+void
+zmtp_v3_decoder_destroy (zmtp_v3_decoder_t **self_p)
 {
     assert (self_p);
     if (*self_p) {
@@ -197,21 +195,6 @@ s_destroy (decoder_t **self_p)
         free (self);
         *self_p = NULL;
     }
-}
-
-static struct decoder_ops ops = {
-    .write = s_write,
-    .buffer = s_buffer,
-    .advance = s_advance,
-    .decode = s_decode,
-    .status = s_status,
-    .destroy = s_destroy
-};
-
-decoder_t *
-zmtp_v3_decoder_create_decoder ()
-{
-    return (decoder_t *) s_new ();
 }
 
 static uint64_t

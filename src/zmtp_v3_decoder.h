@@ -7,8 +7,38 @@
 #ifndef __ZMTP_V3_DECODER_H_INCLUDED__
 #define __ZMTP_V3_DECODER_H_INCLUDED__
 
-#include "decoder.h"
+#define ZMTP_V3_DECODER_READY           0x01
+#define ZMTP_V3_DECODER_WRITE_OK        0x02
+#define ZMTP_V3_DECODER_BUFFER_FLAG     0x04
 
-decoder_constructor_t zmtp_v3_decoder_create_decoder;
+typedef struct zmtp_v3_decoder zmtp_v3_decoder_t;
+
+typedef unsigned int zmtp_v3_decoder_status_t;
+
+zmtp_v3_decoder_t *
+    zmtp_v3_decoder_new ();
+
+int
+    zmp_v3_decoder_write (
+        zmtp_v3_decoder_t *self, iobuf_t *iobuf, zmtp_v3_decoder_status_t *status);
+
+int
+    zmtp_v3_decoder_buffer (
+        zmtp_v3_decoder_t *self, void **buffer, size_t *buffer_size);
+
+int
+    zmtp_v3_decoder_advance (
+        zmtp_v3_decoder_t *self, size_t n, zmtp_v3_decoder_status_t *status);
+
+pdu_t *
+    zmtp_v3_decoder_getmsg (
+        zmtp_v3_decoder_t *self, zmtp_v3_decoder_status_t *status);
+
+void
+    zmtp_v3_decoder_set_buffer_threshold (
+        zmtp_v3_decoder_t *self, size_t buffer_threshold, zmtp_v3_decoder_status_t *status);
+
+void
+    zmtp_v3_decoder_destroy (zmtp_v3_decoder_t **self_p);
 
 #endif
