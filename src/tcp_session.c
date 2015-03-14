@@ -180,7 +180,7 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
                 io_flags &= ~ZKERNEL_OUTPUT_READY;
         }
 
-        if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_STOPPED) != 0) {
+        if ((self->protocol_engine_status & ZKERNEL_PROTOCOL_ENGINE_DONE) != 0) {
             const int rc = protocol_engine_next (
                 &self->protocol_engine, &self->protocol_engine_status);
             if (rc == -1)

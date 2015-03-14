@@ -17,7 +17,7 @@
 #define ZKERNEL_PROTOCOL_ENGINE_DECODER_READY     0x04
 #define ZKERNEL_PROTOCOL_ENGINE_WRITE_OK          0x08
 #define ZKERNEL_PROTOCOL_ENGINE_ERROR             0x10
-#define ZKERNEL_PROTOCOL_ENGINE_STOPPED         0x20
+#define ZKERNEL_PROTOCOL_ENGINE_DONE            0x20
 
 struct protocol_engine;
 
