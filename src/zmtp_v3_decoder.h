@@ -16,7 +16,7 @@ typedef struct zmtp_v3_decoder zmtp_v3_decoder_t;
 typedef unsigned int zmtp_v3_decoder_status_t;
 
 zmtp_v3_decoder_t *
-    zmtp_v3_decoder_new ();
+    zmtp_v3_decoder_new (zmtp_v3_decoder_status_t *status);
 
 int
     zmtp_v3_decoder_write (

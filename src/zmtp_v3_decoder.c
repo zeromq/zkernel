@@ -31,7 +31,7 @@ static size_t
 s_decode_length (const uint8_t *ptr);
 
 zmtp_v3_decoder_t *
-zmtp_v3_decoder_new ()
+zmtp_v3_decoder_new (zmtp_v3_decoder_status_t *status)
 {
     zmtp_v3_decoder_t *self =
         (zmtp_v3_decoder_t *) malloc (sizeof *self);
@@ -42,6 +42,7 @@ zmtp_v3_decoder_new ()
             .ptr = self->buffer,
             .bytes_left = 1
         };
+        *status = ZMTP_V3_DECODER_WRITE_OK;
     }
     return self;
 }
