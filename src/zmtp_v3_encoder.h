@@ -17,7 +17,7 @@ typedef struct zmtp_v3_encoder zmtp_v3_encoder_t;
 typedef unsigned int zmtp_v3_encoder_status_t;
 
 zmtp_v3_encoder_t *
-    zmtp_v3_encoder_new ();
+    zmtp_v3_encoder_new (zmtp_v3_encoder_status_t *status);
 
 int
     zmtp_v3_encoder_putmsg (

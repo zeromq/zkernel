@@ -38,9 +38,12 @@ zmtp_null_handshake_new ()
     if (self) {
         *self = (zmtp_null_handshake_t) {
             .base.ops = ops,
-            .encoder = zmtp_v3_encoder_new (),
             .decoder = zmtp_v3_decoder_new (),
         };
+
+        zmtp_v3_encoder_status_t encoder_status;
+        self->encoder = zmtp_v3_encoder_new (&encoder_status);
+
         if (self->encoder == NULL || self->decoder == NULL) {
             zmtp_v3_encoder_destroy (&self->encoder);
             zmtp_v3_decoder_destroy (&self->decoder);

@@ -26,15 +26,18 @@ static void
 put_uint64 (uint8_t *ptr, uint64_t n);
 
 zmtp_v3_encoder_t *
-zmtp_v3_encoder_new ()
+zmtp_v3_encoder_new (zmtp_v3_encoder_status_t *status)
 {
     zmtp_v3_encoder_t *self =
         (zmtp_v3_encoder_t *) malloc (sizeof *self);
-    if (self)
+    if (self) {
         *self = (zmtp_v3_encoder_t) {
             .state = WAITING_FOR_PDU,
             .buffer_threshold = 4096,
         };
+        *status = ZMTP_V3_ENCODER_READY;
+    }
+
     return self;
 }
 
