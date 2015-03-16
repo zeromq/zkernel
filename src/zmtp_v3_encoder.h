@@ -10,22 +10,26 @@
 
 #define ZMTP_V3_ENCODER_READY           0x01
 #define ZMTP_V3_ENCODER_READ_OK         0x02
-#define ZMTP_V3_ENCODER_BUFFER_FLAG     0x04
 
 typedef struct zmtp_v3_encoder zmtp_v3_encoder_t;
 
-typedef unsigned int zmtp_v3_encoder_status_t;
+struct zmtp_v3_encoder_info {
+    unsigned int flags;
+    size_t dba_size;
+};
+
+typedef struct zmtp_v3_encoder_info zmtp_v3_encoder_info_t;
 
 zmtp_v3_encoder_t *
-    zmtp_v3_encoder_new (zmtp_v3_encoder_status_t *status);
+    zmtp_v3_encoder_new (zmtp_v3_encoder_info_t *info);
 
 int
     zmtp_v3_encoder_putmsg (
-        zmtp_v3_encoder_t *self, pdu_t *pdu, zmtp_v3_encoder_status_t *status);
+        zmtp_v3_encoder_t *self, pdu_t *pdu, zmtp_v3_encoder_info_t *info);
 
 int
     zmtp_v3_encoder_read (
-        zmtp_v3_encoder_t *self, iobuf_t *iobuf, zmtp_v3_encoder_status_t *status);
+        zmtp_v3_encoder_t *self, iobuf_t *iobuf, zmtp_v3_encoder_info_t *info);
 
 int
     zmtp_v3_encoder_buffer (
@@ -33,11 +37,7 @@ int
 
 int
     zmtp_v3_encoder_advance (
-        zmtp_v3_encoder_t *self, size_t n, zmtp_v3_encoder_status_t *status);
-
-void
-    zmtp_v3_encoder_set_buffer_threshold (
-        zmtp_v3_encoder_t *self,size_t buffer_threshold, zmtp_v3_encoder_status_t *status);
+        zmtp_v3_encoder_t *self, size_t n, zmtp_v3_encoder_info_t *info);
 
 void
     zmtp_v3_encoder_destroy (zmtp_v3_encoder_t **base_p);

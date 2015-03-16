@@ -40,8 +40,8 @@ zmtp_null_handshake_new ()
             .base.ops = ops,
         };
 
-        zmtp_v3_encoder_status_t encoder_status;
-        self->encoder = zmtp_v3_encoder_new (&encoder_status);
+        zmtp_v3_encoder_info_t encoder_info;
+        self->encoder = zmtp_v3_encoder_new (&encoder_info);
 
         zmtp_v3_decoder_status_t decoder_status;
         self->decoder = zmtp_v3_decoder_new (&decoder_status);
@@ -71,13 +71,13 @@ s_init (protocol_engine_t *base, uint32_t *status)
 
     memcpy (pdu->pdu_data, msg, sizeof msg);
 
-    zmtp_v3_encoder_status_t encoder_status = 0;
+    zmtp_v3_encoder_info_t encoder_info;
     const int rc =
-        zmtp_v3_encoder_putmsg (self->encoder, pdu, &encoder_status);
+        zmtp_v3_encoder_putmsg (self->encoder, pdu, &encoder_info);
     if (rc == -1)
         return -1;
 
-    assert ((encoder_status & ZMTP_V3_ENCODER_READ_OK) != 0);
+    assert ((encoder_info.flags & ZMTP_V3_ENCODER_READ_OK) != 0);
 
     *status = ZKERNEL_PROTOCOL_ENGINE_READ_OK
             | ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
@@ -94,12 +94,12 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
     if (self->msg_sent)
         return -1;
 
-    zmtp_v3_encoder_status_t encoder_status;
+    zmtp_v3_encoder_info_t encoder_info;
     const int rc =
-        zmtp_v3_encoder_read (self->encoder, iobuf, &encoder_status);
+        zmtp_v3_encoder_read (self->encoder, iobuf, &encoder_info);
     if (rc == -1)
         return -1;
-    if ((encoder_status & ZMTP_V3_ENCODER_READ_OK) == 0)
+    if ((encoder_info.flags & ZMTP_V3_ENCODER_READ_OK) == 0)
         self->msg_sent = true;
 
     *status = 0;
