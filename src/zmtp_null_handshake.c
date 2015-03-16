@@ -43,8 +43,8 @@ zmtp_null_handshake_new ()
         zmtp_v3_encoder_info_t encoder_info;
         self->encoder = zmtp_v3_encoder_new (&encoder_info);
 
-        zmtp_v3_decoder_status_t decoder_status;
-        self->decoder = zmtp_v3_decoder_new (&decoder_status);
+        zmtp_v3_decoder_info_t decoder_info;
+        self->decoder = zmtp_v3_decoder_new (&decoder_info);
 
         if (self->encoder == NULL || self->decoder == NULL) {
             zmtp_v3_encoder_destroy (&self->encoder);
@@ -122,15 +122,15 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
     if (self->msg_received)
         return -1;
 
-    zmtp_v3_decoder_status_t decoder_status;
+    zmtp_v3_decoder_info_t decoder_info;
     const int rc =
-        zmtp_v3_decoder_write (self->decoder, iobuf, &decoder_status);
+        zmtp_v3_decoder_write (self->decoder, iobuf, &decoder_info);
     if (rc == -1)
         return -1;
 
-    if ((decoder_status & ZMTP_V3_DECODER_READY) != 0) {
+    if ((decoder_info.flags & ZMTP_V3_DECODER_READY) != 0) {
         pdu_t *pdu =
-            zmtp_v3_decoder_getmsg (self->decoder, &decoder_status);
+            zmtp_v3_decoder_getmsg (self->decoder, &decoder_info);
         if (rc == -1 || pdu == NULL)
             return -1;
         if (process_msg (self, pdu) == -1)
