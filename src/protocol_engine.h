@@ -19,27 +19,25 @@
 #define ZKERNEL_PROTOCOL_ENGINE_ERROR             0x10
 #define ZKERNEL_PROTOCOL_ENGINE_DONE            0x20
 
-struct protocol_engine;
+typedef struct protocol_engine protocol_engine_t;
 
 struct protocol_engine_ops {
-    int (*init) (struct protocol_engine *self, uint32_t *status);
-    int (*encode) (struct protocol_engine *self, pdu_t *pdu, uint32_t *status);
-    int (*read) (struct protocol_engine *self, iobuf_t *iobuf, uint32_t *status);
-    int (*read_buffer) (struct protocol_engine *self, const void **buffer, size_t *buffer_size);
-    int (*read_advance) (struct protocol_engine *self, size_t n, uint32_t *status);
-    pdu_t *(*decode) (struct protocol_engine *self, uint32_t *status);
-    int (*write) (struct protocol_engine *self, iobuf_t *iobuf, uint32_t *status);
-    int (*write_buffer) (struct protocol_engine *self, void **buffer, size_t *buffer_size);
-    int (*write_advance) (struct protocol_engine *self, size_t n, uint32_t *status);
-    int (*next) (struct protocol_engine **self_p, uint32_t *status);
-    void (*destroy) (struct protocol_engine **self_p);
+    int (*init) (protocol_engine_t *self, uint32_t *status);
+    int (*encode) (protocol_engine_t *self, pdu_t *pdu, uint32_t *status);
+    int (*read) (protocol_engine_t *self, iobuf_t *iobuf, uint32_t *status);
+    int (*read_buffer) (protocol_engine_t *self, const void **buffer, size_t *buffer_size);
+    int (*read_advance) (protocol_engine_t *self, size_t n, uint32_t *status);
+    pdu_t *(*decode) (protocol_engine_t *self, uint32_t *status);
+    int (*write) (protocol_engine_t *self, iobuf_t *iobuf, uint32_t *status);
+    int (*write_buffer) (protocol_engine_t *self, void **buffer, size_t *buffer_size);
+    int (*write_advance) (protocol_engine_t *self, size_t n, uint32_t *status);
+    int (*next) (protocol_engine_t **self_p, uint32_t *status);
+    void (*destroy) (protocol_engine_t **self_p);
 };
 
 struct protocol_engine {
     struct protocol_engine_ops ops;
 };
-
-typedef struct protocol_engine protocol_engine_t;
 
 typedef protocol_engine_t *(protocol_engine_constructor_t) ();
 
