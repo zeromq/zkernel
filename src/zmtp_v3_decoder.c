@@ -97,25 +97,12 @@ zmtp_v3_decoder_write (
         *info = (zmtp_v3_decoder_info_t) { .flags = ZMTP_V3_DECODER_READY };
     else
         *info = (zmtp_v3_decoder_info_t) {
-            .flags = ZMTP_V3_DECODER_WRITE_OK, .dba_size = self->bytes_left,
+            .flags = ZMTP_V3_DECODER_WRITE_OK,
+            .dba_size = self->bytes_left,
+            .dba_ptr = self->ptr,
         };
 
     return 0;
-}
-
-int
-zmtp_v3_decoder_buffer (
-    zmtp_v3_decoder_t *self, void **buffer, size_t *buffer_size)
-{
-    assert (self);
-
-    if (self->state != DECODING_BODY)
-        return -1;
-    else {
-        *buffer = self->ptr;
-        *buffer_size = self->bytes_left;
-        return 0;
-    }
 }
 
 int
@@ -139,7 +126,9 @@ zmtp_v3_decoder_advance (
         *info = (zmtp_v3_decoder_info_t) { .flags = ZMTP_V3_DECODER_READY };
     else
         *info = (zmtp_v3_decoder_info_t) {
-            .flags = ZMTP_V3_DECODER_WRITE_OK, .dba_size = self->bytes_left
+            .flags = ZMTP_V3_DECODER_WRITE_OK,
+            .dba_size = self->bytes_left,
+            .dba_ptr = self->ptr,
         };
 
     return 0;

@@ -15,6 +15,7 @@ typedef struct zmtp_v3_decoder zmtp_v3_decoder_t;
 struct zmtp_v3_decoder_info {
     unsigned int flags;
     size_t dba_size;
+    uint8_t *dba_ptr;
 };
 
 typedef struct zmtp_v3_decoder_info zmtp_v3_decoder_info_t;
@@ -25,10 +26,6 @@ zmtp_v3_decoder_t *
 int
     zmtp_v3_decoder_write (
         zmtp_v3_decoder_t *self, iobuf_t *iobuf, zmtp_v3_decoder_info_t *info);
-
-int
-    zmtp_v3_decoder_buffer (
-        zmtp_v3_decoder_t *self, void **buffer, size_t *buffer_size);
 
 int
     zmtp_v3_decoder_advance (
