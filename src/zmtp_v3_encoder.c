@@ -108,25 +108,10 @@ zmtp_v3_encoder_read (
         *info = (zmtp_v3_encoder_info_t) { .flags = ZMTP_V3_ENCODER_READY };
     else
         *info = (zmtp_v3_encoder_info_t) {
-            .flags = ZMTP_V3_ENCODER_READ_OK, .dba_size = self->bytes_left };
-
-    return 0;
-}
-
-int
-zmtp_v3_encoder_buffer (
-    zmtp_v3_encoder_t *self, const void **buffer, size_t *buffer_size)
-{
-    assert (self);
-
-    if (self->state == WAITING_FOR_PDU) {
-        *buffer = NULL;
-        *buffer_size = 0;
-    }
-    else {
-        *buffer = self->ptr;
-        *buffer_size = self->bytes_left;
-    }
+            .flags = ZMTP_V3_ENCODER_READ_OK,
+            .dba_size = self->bytes_left,
+            .dba_ptr = self->ptr,
+        };
 
     return 0;
 }
@@ -166,7 +151,10 @@ zmtp_v3_encoder_advance (
     }
     else
         *info = (zmtp_v3_encoder_info_t) {
-            .flags = ZMTP_V3_ENCODER_READ_OK, .dba_size = self->bytes_left };
+            .flags = ZMTP_V3_ENCODER_READ_OK,
+            .dba_size = self->bytes_left,
+            .dba_ptr = self->ptr,
+        };
 
     return 0;
 }
