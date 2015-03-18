@@ -13,19 +13,19 @@
 
 struct io_object;
 
+typedef struct io_object io_object_t;
+
 struct io_object_ops {
-    int (*init) (struct io_object *self, int *fd, uint32_t *timer_interval);
-    int (*event) (struct io_object *self, uint32_t flags, int *fd, uint32_t *timer_interval);
-    int (*message) (struct io_object *self, msg_t *msg);
-    int (*timeout) (struct io_object *self, int *fd, uint32_t *timer_interval);
+    int (*init) (io_object_t *self, int *fd, uint32_t *timer_interval);
+    int (*event) (io_object_t *self, uint32_t flags, int *fd, uint32_t *timer_interval);
+    int (*message) (io_object_t *self, msg_t *msg);
+    int (*timeout) (io_object_t *self, int *fd, uint32_t *timer_interval);
 };
 
 struct io_object {
     void *io_handle;
     struct io_object_ops ops;
 };
-
-typedef struct io_object io_object_t;
 
 inline int
 io_object_init (io_object_t *self, int *fd, uint32_t *timer_interval)
