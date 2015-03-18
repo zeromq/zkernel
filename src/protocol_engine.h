@@ -21,17 +21,17 @@
 
 typedef struct protocol_engine protocol_engine_t;
 
+typedef struct protocol_engine_info protocol_engine_info_t;
+
 struct protocol_engine_ops {
-    int (*init) (protocol_engine_t *self, uint32_t *status);
-    int (*encode) (protocol_engine_t *self, pdu_t *pdu, uint32_t *status);
-    int (*read) (protocol_engine_t *self, iobuf_t *iobuf, uint32_t *status);
-    int (*read_buffer) (protocol_engine_t *self, const void **buffer, size_t *buffer_size);
-    int (*read_advance) (protocol_engine_t *self, size_t n, uint32_t *status);
-    pdu_t *(*decode) (protocol_engine_t *self, uint32_t *status);
-    int (*write) (protocol_engine_t *self, iobuf_t *iobuf, uint32_t *status);
-    int (*write_buffer) (protocol_engine_t *self, void **buffer, size_t *buffer_size);
-    int (*write_advance) (protocol_engine_t *self, size_t n, uint32_t *status);
-    int (*next) (protocol_engine_t **self_p, uint32_t *status);
+    int (*init) (protocol_engine_t *self, protocol_engine_info_t *info);
+    int (*encode) (protocol_engine_t *self, pdu_t *pdu, protocol_engine_info_t *info);
+    int (*read) (protocol_engine_t *self, iobuf_t *iobuf, protocol_engine_info_t *info);
+    int (*read_advance) (protocol_engine_t *self, size_t n, protocol_engine_info_t *info);
+    pdu_t *(*decode) (protocol_engine_t *self, protocol_engine_info_t *info);
+    int (*write) (protocol_engine_t *self, iobuf_t *iobuf, protocol_engine_info_t *info);
+    int (*write_advance) (protocol_engine_t *self, size_t n, protocol_engine_info_t *info);
+    int (*next) (protocol_engine_t **self_p, protocol_engine_info_t *info);
     void (*destroy) (protocol_engine_t **self_p);
 };
 
@@ -39,64 +39,60 @@ struct protocol_engine {
     struct protocol_engine_ops ops;
 };
 
+struct protocol_engine_info {
+    unsigned int flags;
+    size_t read_buffer_size;
+    void *read_buffer;
+    size_t write_buffer_size;
+    void *write_buffer;
+};
+
 typedef protocol_engine_t *(protocol_engine_constructor_t) ();
 
 inline int
-protocol_engine_init (protocol_engine_t *self, uint32_t *status)
+protocol_engine_init (protocol_engine_t *self, protocol_engine_info_t *info)
 {
-    return self->ops.init (self, status);
+    return self->ops.init (self, info);
 }
 
 inline int
-protocol_engine_encode (protocol_engine_t *self, pdu_t *pdu, uint32_t *status)
+protocol_engine_encode (protocol_engine_t *self, pdu_t *pdu, protocol_engine_info_t *info)
 {
-    return self->ops.encode (self, pdu, status);
+    return self->ops.encode (self, pdu, info);
 }
 
 inline int
-protocol_engine_read (protocol_engine_t *self, iobuf_t *iobuf, uint32_t *status)
+protocol_engine_read (protocol_engine_t *self, iobuf_t *iobuf, protocol_engine_info_t *info)
 {
-    return self->ops.read (self, iobuf, status);
+    return self->ops.read (self, iobuf, info);
 }
 
 inline int
-protocol_engine_read_buffer (protocol_engine_t *self, const void **buffer, size_t *buffer_size)
+protocol_engine_read_advance (protocol_engine_t *self, size_t n, protocol_engine_info_t *info)
 {
-    return self->ops.read_buffer (self, buffer, buffer_size);
-}
-
-inline int
-protocol_engine_read_advance (protocol_engine_t *self, size_t n, uint32_t *status)
-{
-    return self->ops.read_advance (self, n, status);
+    return self->ops.read_advance (self, n, info);
 }
 
 inline pdu_t *
-protocol_engine_decode (protocol_engine_t *self, uint32_t *status)
+protocol_engine_decode (protocol_engine_t *self, protocol_engine_info_t *info)
 {
-    return self->ops.decode (self, status);
+    return self->ops.decode (self, info);
 }
 
 inline int
-protocol_engine_write (protocol_engine_t *self, iobuf_t *iobuf, uint32_t *status)
+protocol_engine_write (protocol_engine_t *self, iobuf_t *iobuf, protocol_engine_info_t *info)
 {
-    return self->ops.write (self, iobuf, status);
+    return self->ops.write (self, iobuf, info);
 }
 
 inline int
-protocol_engine_write_buffer (protocol_engine_t *self, void **buffer, size_t *buffer_size)
+protocol_engine_write_advance (protocol_engine_t *self, size_t n, protocol_engine_info_t *info)
 {
-    return self->ops.write_buffer (self, buffer, buffer_size);
-}
-
-inline int
-protocol_engine_write_advance (protocol_engine_t *self, size_t n, uint32_t *status)
-{
-    return self->ops.write_advance (self, n, status);
+    return self->ops.write_advance (self, n, info);
 }
 
 int
-    protocol_engine_next (protocol_engine_t **self_p, uint32_t *status);
+    protocol_engine_next (protocol_engine_t **self_p, protocol_engine_info_t *info);
 
 void
     protocol_engine_destroy (protocol_engine_t **self_p);

@@ -76,7 +76,7 @@ zmtp_handshake_new_protocol_engine ()
 }
 
 static int
-s_init (protocol_engine_t *base, uint32_t *status)
+s_init (protocol_engine_t *base, protocol_engine_info_t *info)
 {
     zmtp_handshake_t *self = (zmtp_handshake_t *) base;
     assert (self);
@@ -85,29 +85,31 @@ s_init (protocol_engine_t *base, uint32_t *status)
     iobuf_write (self->sendbuf, signature, sizeof signature);
     assert (iobuf_available (self->sendbuf) == sizeof signature);
 
-    *status = ZKERNEL_PROTOCOL_ENGINE_READ_OK | ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+    *info = (protocol_engine_info_t) {
+        .flags = ZKERNEL_PROTOCOL_ENGINE_READ_OK | ZKERNEL_PROTOCOL_ENGINE_WRITE_OK,
+    };
 
     return 0;
 }
 
 static int
-s_encode (protocol_engine_t *base, pdu_t *pdu, uint32_t *status)
+s_encode (protocol_engine_t *base, pdu_t *pdu, protocol_engine_info_t *info)
 {
     return -1;
 }
 
 static int
-s_read (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
+s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 {
     zmtp_handshake_t *self = (zmtp_handshake_t *) base;
     assert (self);
 
     iobuf_copy_all (iobuf, self->sendbuf);
-    *status = 0;
+    *info = (protocol_engine_info_t) { .flags = 0 };
     if (iobuf_available (self->sendbuf) > 0)
-        *status |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+        info->flags |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
     if (self->state.write_fn != NULL)
-        *status |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+        info->flags |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
     /*
     if (self->next_stage != NULL)
         *status |= ZKERNEL_PROTOCOL_ENGINE_NEXT_STAGE;
@@ -117,25 +119,19 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
 }
 
 static int
-s_read_buffer (protocol_engine_t *base, const void **buffer, size_t *buffer_size)
-{
-    return -1;
-}
-
-static int
-s_read_advance (protocol_engine_t *base, size_t n, uint32_t *status)
+s_read_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info)
 {
     return -1;
 }
 
 static pdu_t *
-s_decode (protocol_engine_t *base, uint32_t *status)
+s_decode (protocol_engine_t *base, protocol_engine_info_t *info)
 {
     return NULL;
 }
 
 static int
-s_write (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
+s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 {
     zmtp_handshake_t *self = (zmtp_handshake_t *) base;
     assert (self);
@@ -149,27 +145,21 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
             return -1;
         assert (self->next_stage);
         if (iobuf_available (self->sendbuf) == 0)
-            *status = 0;  //  TODO: Indicate next stage is ready
+            *info = (protocol_engine_info_t) { .flags = 0 };  //  TODO: Indicate next stage is ready
         else
-            *status |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+            *info = (protocol_engine_info_t) { .flags = ZKERNEL_PROTOCOL_ENGINE_READ_OK };
     }
     else {
-        *status = ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+        *info = (protocol_engine_info_t) { .flags = ZKERNEL_PROTOCOL_ENGINE_WRITE_OK };
         if (iobuf_available (self->sendbuf) > 0)
-            *status |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+            info->flags |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
     }
 
     return 0;
 }
 
 static int
-s_write_buffer (protocol_engine_t *base, void **buffer, size_t *buffer_size)
-{
-    return -1;
-}
-
-static int
-s_write_advance (protocol_engine_t *base, size_t n, uint32_t *status)
+s_write_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info)
 {
     return -1;
 }
@@ -279,11 +269,9 @@ static struct protocol_engine_ops protocol_engine_ops = {
     .init = s_init,
     .encode = s_encode,
     .read = s_read,
-    .read_buffer = s_read_buffer,
     .read_advance = s_read_advance,
     .decode = s_decode,
     .write = s_write,
-    .write_buffer = s_write_buffer,
     .write_advance = s_write_advance,
     .destroy = s_destroy,
 };

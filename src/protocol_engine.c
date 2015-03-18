@@ -9,40 +9,34 @@
 #include "protocol_engine.h"
 
 extern inline int
-protocol_engine_init (protocol_engine_t *self, uint32_t *status);
+protocol_engine_init (protocol_engine_t *self, protocol_engine_info_t *info);
 
 extern inline int
-protocol_engine_encode (protocol_engine_t *self, pdu_t *pdu, uint32_t *status);
+protocol_engine_encode (protocol_engine_t *self, pdu_t *pdu, protocol_engine_info_t *info);
 
 extern inline int
-protocol_engine_read (protocol_engine_t *self, iobuf_t *iobuf, uint32_t *status);
+protocol_engine_read (protocol_engine_t *self, iobuf_t *iobuf, protocol_engine_info_t *info);
 
 extern inline int
-protocol_engine_read_buffer (protocol_engine_t *self, const void **buffer, size_t *buffer_size);
-
-extern inline int
-protocol_engine_read_advance (protocol_engine_t *self, size_t n, uint32_t *status);
+protocol_engine_read_advance (protocol_engine_t *self, size_t n, protocol_engine_info_t *info);
 
 extern inline pdu_t *
-protocol_engine_decode (protocol_engine_t *self, uint32_t *status);
+protocol_engine_decode (protocol_engine_t *self, protocol_engine_info_t *info);
 
 extern inline int
-protocol_engine_write (protocol_engine_t *self, iobuf_t *iobuf, uint32_t *status);
+protocol_engine_write (protocol_engine_t *self, iobuf_t *iobuf, protocol_engine_info_t *info);
 
 extern inline int
-protocol_engine_write_buffer (protocol_engine_t *self, void **buffer, size_t *buffer_size);
-
-extern inline int
-protocol_engine_write_advance (protocol_engine_t *self, size_t n, uint32_t *status);
+protocol_engine_write_advance (protocol_engine_t *self, size_t n, protocol_engine_info_t *info);
 
 int
-protocol_engine_next (protocol_engine_t **self_p, uint32_t *status)
+protocol_engine_next (protocol_engine_t **self_p, protocol_engine_info_t *info)
 {
     assert (self_p);
     if (*self_p) {
         protocol_engine_t *self = *self_p;
         if (self->ops.next)
-            return self->ops.next (self_p, status);
+            return self->ops.next (self_p, info);
         else
             return -1;
     }

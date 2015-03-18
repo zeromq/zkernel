@@ -58,7 +58,7 @@ zmtp_null_handshake_new ()
 }
 
 static int
-s_init (protocol_engine_t *base, uint32_t *status)
+s_init (protocol_engine_t *base, protocol_engine_info_t *info)
 {
     zmtp_null_handshake_t *self = (zmtp_null_handshake_t *) base;
     assert (self);
@@ -79,14 +79,15 @@ s_init (protocol_engine_t *base, uint32_t *status)
 
     assert ((encoder_info.flags & ZMTP_V3_ENCODER_READ_OK) != 0);
 
-    *status = ZKERNEL_PROTOCOL_ENGINE_READ_OK
-            | ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+    *info = (protocol_engine_info_t) {
+        .flags = ZKERNEL_PROTOCOL_ENGINE_READ_OK | ZKERNEL_PROTOCOL_ENGINE_WRITE_OK,
+    };
 
     return 0;
 }
 
 static int
-s_read (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
+s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 {
     zmtp_null_handshake_t *self = (zmtp_null_handshake_t *) base;
     assert (self);
@@ -102,19 +103,19 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
     if ((encoder_info.flags & ZMTP_V3_ENCODER_READ_OK) == 0)
         self->msg_sent = true;
 
-    *status = 0;
+    *info = (protocol_engine_info_t) { .flags = 0 };
     if (!self->msg_sent)
-        *status |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+        info->flags |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
     if (!self->msg_received)
-        *status |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+        info->flags |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
     if (self->msg_sent && self->msg_received)
-        *status |= ZKERNEL_PROTOCOL_ENGINE_DONE;
+        info->flags |= ZKERNEL_PROTOCOL_ENGINE_DONE;
 
     return 0;
 }
 
 static int
-s_write (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
+s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 {
     zmtp_null_handshake_t *self = (zmtp_null_handshake_t *) base;
     assert (self);
@@ -139,13 +140,13 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, uint32_t *status)
         self->msg_received = true;
     }
 
-    *status = 0;
+    *info = (protocol_engine_info_t) { .flags = 0};
     if (!self->msg_sent)
-        *status |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+        info->flags |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
     if (!self->msg_received)
-        *status |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+        info->flags |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
     if (self->msg_sent && self->msg_received)
-        *status |= ZKERNEL_PROTOCOL_ENGINE_DONE;
+        info->flags |= ZKERNEL_PROTOCOL_ENGINE_DONE;
 
     return 0;
 }
