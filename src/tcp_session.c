@@ -153,11 +153,11 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
         if ((io_flags & ZKERNEL_INPUT_READY) != 0) {
             if (s_input (self) == -1)
                 goto error;
-            if ((peinfo->flags & ZKERNEL_PROTOCOL_ENGINE_WRITE_OK) != 0)
+            if ((peinfo->flags & ZKERNEL_WRITE_OK) != 0)
                 io_flags &= ~ZKERNEL_INPUT_READY;
         }
 
-        while ((peinfo->flags & ZKERNEL_PROTOCOL_ENGINE_DECODER_READY) != 0) {
+        while ((peinfo->flags & ZKERNEL_DECODER_READY) != 0) {
             pdu_t *pdu = protocol_engine_decode (self->protocol_engine, peinfo);
             if (pdu == NULL)
                 goto error;
@@ -165,7 +165,7 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
             mailbox_enqueue (self->owner, (msg_t *) pdu);
         }
 
-        while (self->queue_head && (peinfo->flags & ZKERNEL_PROTOCOL_ENGINE_ENCODER_READY) != 0) {
+        while (self->queue_head && (peinfo->flags & ZKERNEL_ENCODER_READY) != 0) {
             pdu_t *pdu = self->queue_head;
             self->queue_head = (pdu_t *) pdu->base.next;
             if (self->queue_head == NULL)
@@ -177,11 +177,11 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
         if ((io_flags & ZKERNEL_OUTPUT_READY) != 0) {
             if (s_output (self) == -1)
                 goto error;
-            if ((peinfo->flags & ZKERNEL_PROTOCOL_ENGINE_READ_OK) != 0)
+            if ((peinfo->flags & ZKERNEL_READ_OK) != 0)
                 io_flags &= ~ZKERNEL_OUTPUT_READY;
         }
 
-        if ((peinfo->flags & ZKERNEL_PROTOCOL_ENGINE_DONE) != 0) {
+        if ((peinfo->flags & ZKERNEL_ENGINE_DONE) != 0) {
             const int rc = protocol_engine_next (&self->protocol_engine, peinfo);
             if (rc == -1)
                 goto error;
@@ -189,18 +189,18 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
 
         uint32_t mask = peinfo->flags;
         if ((io_flags & ZKERNEL_INPUT_READY) == 0)
-            mask &= ~ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+            mask &= ~ZKERNEL_WRITE_OK;
         if ((io_flags & ZKERNEL_OUTPUT_READY) == 0)
-            mask &= ~ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+            mask &= ~ZKERNEL_READ_OK;
 
         if ((peinfo->flags & mask) == 0)
             break;
     }
 
     int io_mask = 0;
-    if ((peinfo->flags & ZKERNEL_PROTOCOL_ENGINE_WRITE_OK) != 0)
+    if ((peinfo->flags & ZKERNEL_WRITE_OK) != 0)
         io_mask |= ZKERNEL_POLLIN;
-    if ((peinfo->flags & ZKERNEL_PROTOCOL_ENGINE_READ_OK) != 0 || iobuf_available (self->sendbuf) > 0)
+    if ((peinfo->flags & ZKERNEL_READ_OK) != 0 || iobuf_available (self->sendbuf) > 0)
         io_mask |= ZKERNEL_POLLOUT;
 
     return io_mask;
@@ -218,7 +218,7 @@ s_input (tcp_session_t *self)
     protocol_engine_info_t *peinfo = &self->peinfo;
     iobuf_t *recvbuf = self->recvbuf;
 
-    while ((peinfo->flags & ZKERNEL_PROTOCOL_ENGINE_WRITE_OK) != 0) {
+    while ((peinfo->flags & ZKERNEL_WRITE_OK) != 0) {
         if (iobuf_available (recvbuf) > 0) {
             if (protocol_engine_write (protocol_engine, recvbuf, peinfo) != 0)
                 return -1;
@@ -275,7 +275,7 @@ s_output (tcp_session_t *self)
         }
     }
 
-    while ((peinfo->flags & ZKERNEL_PROTOCOL_ENGINE_READ_OK) != 0) {
+    while ((peinfo->flags & ZKERNEL_READ_OK) != 0) {
         if (peinfo->read_buffer_size > 256) {
             assert (peinfo->read_buffer);
             const ssize_t rc = send (self->fd, peinfo->read_buffer, peinfo->read_buffer_size, 0);

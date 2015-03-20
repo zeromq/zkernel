@@ -27,4 +27,10 @@
 #define ZKERNEL_OUTPUT_READY    0x02
 #define ZKERNEL_IO_ERROR        0x04
 
+#define ZKERNEL_ENCODER_READY   0x01
+#define ZKERNEL_READ_OK         0x02
+#define ZKERNEL_DECODER_READY   0x04
+#define ZKERNEL_WRITE_OK        0x08
+#define ZKERNEL_ENGINE_DONE     0x20
+
 #endif

@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "zkernel.h"
 #include "protocol_engine.h"
 #include "zmtp_v3_encoder.h"
 #include "zmtp_v3_decoder.h"
@@ -80,7 +81,7 @@ s_init (protocol_engine_t *base, protocol_engine_info_t *info)
     assert ((encoder_info.flags & ZMTP_V3_ENCODER_READ_OK) != 0);
 
     *info = (protocol_engine_info_t) {
-        .flags = ZKERNEL_PROTOCOL_ENGINE_READ_OK | ZKERNEL_PROTOCOL_ENGINE_WRITE_OK,
+        .flags = ZKERNEL_READ_OK | ZKERNEL_WRITE_OK,
     };
 
     return 0;
@@ -105,11 +106,11 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 
     *info = (protocol_engine_info_t) { .flags = 0 };
     if (!self->msg_sent)
-        info->flags |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+        info->flags |= ZKERNEL_READ_OK;
     if (!self->msg_received)
-        info->flags |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+        info->flags |= ZKERNEL_WRITE_OK;
     if (self->msg_sent && self->msg_received)
-        info->flags |= ZKERNEL_PROTOCOL_ENGINE_DONE;
+        info->flags |= ZKERNEL_ENGINE_DONE;
 
     return 0;
 }
@@ -142,11 +143,11 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 
     *info = (protocol_engine_info_t) { .flags = 0};
     if (!self->msg_sent)
-        info->flags |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+        info->flags |= ZKERNEL_READ_OK;
     if (!self->msg_received)
-        info->flags |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+        info->flags |= ZKERNEL_WRITE_OK;
     if (self->msg_sent && self->msg_received)
-        info->flags |= ZKERNEL_PROTOCOL_ENGINE_DONE;
+        info->flags |= ZKERNEL_ENGINE_DONE;
 
     return 0;
 }

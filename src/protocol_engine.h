@@ -12,13 +12,6 @@
 #include "iobuf.h"
 #include "pdu.h"
 
-#define ZKERNEL_PROTOCOL_ENGINE_ENCODER_READY     0x01
-#define ZKERNEL_PROTOCOL_ENGINE_READ_OK           0x02
-#define ZKERNEL_PROTOCOL_ENGINE_DECODER_READY     0x04
-#define ZKERNEL_PROTOCOL_ENGINE_WRITE_OK          0x08
-#define ZKERNEL_PROTOCOL_ENGINE_ERROR             0x10
-#define ZKERNEL_PROTOCOL_ENGINE_DONE            0x20
-
 typedef struct protocol_engine protocol_engine_t;
 
 typedef struct protocol_engine_info protocol_engine_info_t;

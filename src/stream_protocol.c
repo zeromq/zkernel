@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "zkernel.h"
 #include "iobuf.h"
 #include "pdu.h"
 #include "protocol_engine.h"
@@ -38,8 +39,8 @@ stream_protocol_engine_new ()
     if (self) {
         *self = (stream_protocol_engine_t) {
             .base = (protocol_engine_t) {.ops = ops },
-            .encoder_flags = ZKERNEL_PROTOCOL_ENGINE_ENCODER_READY,
-            .decoder_flags = ZKERNEL_PROTOCOL_ENGINE_WRITE_OK,
+            .encoder_flags = ZKERNEL_ENCODER_READY,
+            .decoder_flags = ZKERNEL_WRITE_OK,
         };
     }
 
@@ -80,8 +81,8 @@ s_encode (protocol_engine_t *base, pdu_t *pdu, protocol_engine_info_t *info)
 
     self->encoder_flags =
         self->read_buffer_size == 0
-            ? ZKERNEL_PROTOCOL_ENGINE_ENCODER_READY
-            : ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+            ? ZKERNEL_ENCODER_READY
+            : ZKERNEL_READ_OK;
 
     *info = (protocol_engine_info_t) {
         .flags = self->encoder_flags | self->decoder_flags,
@@ -107,8 +108,8 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 
     self->encoder_flags =
         self->read_buffer_size == 0
-            ? ZKERNEL_PROTOCOL_ENGINE_ENCODER_READY
-            : ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+            ? ZKERNEL_ENCODER_READY
+            : ZKERNEL_READ_OK;
 
     *info = (protocol_engine_info_t) {
         .flags = self->encoder_flags | self->decoder_flags,
@@ -133,8 +134,8 @@ s_read_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info)
 
     self->encoder_flags =
         self->read_buffer_size == 0
-            ? ZKERNEL_PROTOCOL_ENGINE_ENCODER_READY
-            : ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+            ? ZKERNEL_ENCODER_READY
+            : ZKERNEL_READ_OK;
 
     *info = (protocol_engine_info_t) {
         .flags = self->encoder_flags | self->decoder_flags,
@@ -158,7 +159,7 @@ s_decode (protocol_engine_t *base, protocol_engine_info_t *info)
         return NULL;
 
     self->decoder_pdu = NULL;
-    self->decoder_flags = ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+    self->decoder_flags = ZKERNEL_WRITE_OK;
 
     *info = (protocol_engine_info_t) {
         .flags = self->encoder_flags | self->decoder_flags,
@@ -195,9 +196,9 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 
     self->decoder_flags = 0;
     if (pdu->pdu_size > 0)
-        self->decoder_flags |= ZKERNEL_PROTOCOL_ENGINE_DECODER_READY;
+        self->decoder_flags |= ZKERNEL_DECODER_READY;
     if (self->write_buffer_size > 0)
-        self->decoder_flags |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+        self->decoder_flags |= ZKERNEL_WRITE_OK;
 
     *info = (protocol_engine_info_t) {
         .flags = self->encoder_flags | self->decoder_flags,
@@ -227,9 +228,9 @@ s_write_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info
 
     self->decoder_flags = 0;
     if (pdu->pdu_size > 0)
-        self->decoder_flags |= ZKERNEL_PROTOCOL_ENGINE_DECODER_READY;
+        self->decoder_flags |= ZKERNEL_DECODER_READY;
     if (self->write_buffer_size > 0)
-        self->decoder_flags |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+        self->decoder_flags |= ZKERNEL_WRITE_OK;
 
     *info = (protocol_engine_info_t) {
         .flags = self->encoder_flags | self->decoder_flags,

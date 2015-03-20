@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#include "zkernel.h"
 #include "zmtp_handshake.h"
 
 static const int zmtp_1_0   = 0;
@@ -86,7 +87,7 @@ s_init (protocol_engine_t *base, protocol_engine_info_t *info)
     assert (iobuf_available (self->sendbuf) == sizeof signature);
 
     *info = (protocol_engine_info_t) {
-        .flags = ZKERNEL_PROTOCOL_ENGINE_READ_OK | ZKERNEL_PROTOCOL_ENGINE_WRITE_OK,
+        .flags = ZKERNEL_READ_OK | ZKERNEL_WRITE_OK,
     };
 
     return 0;
@@ -107,12 +108,12 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
     iobuf_copy_all (iobuf, self->sendbuf);
     *info = (protocol_engine_info_t) { .flags = 0 };
     if (iobuf_available (self->sendbuf) > 0)
-        info->flags |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+        info->flags |= ZKERNEL_READ_OK;
     if (self->state.write_fn != NULL)
-        info->flags |= ZKERNEL_PROTOCOL_ENGINE_WRITE_OK;
+        info->flags |= ZKERNEL_WRITE_OK;
     /*
     if (self->next_stage != NULL)
-        *status |= ZKERNEL_PROTOCOL_ENGINE_NEXT_STAGE;
+        *status |= ZKERNEL_NEXT_STAGE;
     */
 
     return 0;
@@ -147,12 +148,12 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
         if (iobuf_available (self->sendbuf) == 0)
             *info = (protocol_engine_info_t) { .flags = 0 };  //  TODO: Indicate next stage is ready
         else
-            *info = (protocol_engine_info_t) { .flags = ZKERNEL_PROTOCOL_ENGINE_READ_OK };
+            *info = (protocol_engine_info_t) { .flags = ZKERNEL_READ_OK };
     }
     else {
-        *info = (protocol_engine_info_t) { .flags = ZKERNEL_PROTOCOL_ENGINE_WRITE_OK };
+        *info = (protocol_engine_info_t) { .flags = ZKERNEL_WRITE_OK };
         if (iobuf_available (self->sendbuf) > 0)
-            info->flags |= ZKERNEL_PROTOCOL_ENGINE_READ_OK;
+            info->flags |= ZKERNEL_READ_OK;
     }
 
     return 0;
