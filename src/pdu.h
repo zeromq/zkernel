@@ -7,6 +7,7 @@
 #ifndef __PDU_H_INCLUDED__
 #define __PDU_H_INCLUDED__
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "msg.h"

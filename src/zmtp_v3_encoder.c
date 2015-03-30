@@ -109,8 +109,8 @@ zmtp_v3_encoder_read (
     else
         *info = (zmtp_v3_encoder_info_t) {
             .flags = ZMTP_V3_ENCODER_READ_OK,
-            .dba_size = self->bytes_left,
-            .dba_ptr = self->ptr,
+            .buffer = self->ptr,
+            .buffer_size = self->bytes_left,
         };
 
     return 0;
@@ -152,8 +152,8 @@ zmtp_v3_encoder_advance (
     else
         *info = (zmtp_v3_encoder_info_t) {
             .flags = ZMTP_V3_ENCODER_READ_OK,
-            .dba_size = self->bytes_left,
-            .dba_ptr = self->ptr,
+            .buffer = self->ptr,
+            .buffer_size = self->bytes_left,
         };
 
     return 0;

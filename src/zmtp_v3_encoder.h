@@ -15,8 +15,8 @@ typedef struct zmtp_v3_encoder zmtp_v3_encoder_t;
 
 struct zmtp_v3_encoder_info {
     unsigned int flags;
-    size_t dba_size;
-    uint8_t *dba_ptr;
+    uint8_t *buffer;
+    size_t buffer_size;
 };
 
 typedef struct zmtp_v3_encoder_info zmtp_v3_encoder_info_t;
