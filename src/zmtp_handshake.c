@@ -10,6 +10,7 @@
 
 #include "zkernel.h"
 #include "zmtp_handshake.h"
+#include "zmtp_null_handshake.h"
 
 static const int zmtp_1_0   = 0;
 static const int zmtp_2_0   = 1;
@@ -21,14 +22,13 @@ static const size_t zmtp_v2_greeting_size   = 12;
 static const size_t zmtp_v3_greeting_size   = 64;
 
 struct state {
-    struct state (*write_fn) (zmtp_handshake_t *, iobuf_t *);
+    struct state (*write) (zmtp_handshake_t *, iobuf_t *);
 };
 
 typedef struct state state_t;
 
 struct zmtp_handshake {
     protocol_engine_t base;
-    int error;
     state_t state;
     iobuf_t *sendbuf;
     iobuf_t *recvbuf;
@@ -44,7 +44,7 @@ static state_fn_t
     receive_zmtp_v2_greeting,
     receive_zmtp_v3_greeting;
 
-static struct protocol_engine_ops protocol_engine_ops;
+static struct protocol_engine_ops ops;
 
 zmtp_handshake_t *
 zmtp_handshake_new ()
@@ -53,8 +53,8 @@ zmtp_handshake_new ()
         (zmtp_handshake_t *) malloc (sizeof *self);
     if (self) {
         *self = (zmtp_handshake_t) {
-            .base.ops = protocol_engine_ops,
-            .state.write_fn = receive_signature_a,
+            .base.ops = ops,
+            .state.write = receive_signature_a,
             .sendbuf = iobuf_new (zmtp_v3_greeting_size),
             .recvbuf = iobuf_new (zmtp_v3_greeting_size),
         };
@@ -94,41 +94,26 @@ s_init (protocol_engine_t *base, protocol_engine_info_t *info)
 }
 
 static int
-s_encode (protocol_engine_t *base, pdu_t *pdu, protocol_engine_info_t *info)
-{
-    return -1;
-}
-
-static int
 s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 {
     zmtp_handshake_t *self = (zmtp_handshake_t *) base;
     assert (self);
 
     iobuf_copy_all (iobuf, self->sendbuf);
-    *info = (protocol_engine_info_t) { .flags = 0 };
-    if (iobuf_available (self->sendbuf) > 0)
-        info->flags |= ZKERNEL_READ_OK;
-    if (self->state.write_fn != NULL)
-        info->flags |= ZKERNEL_WRITE_OK;
-    /*
-    if (self->next_stage != NULL)
-        *status |= ZKERNEL_NEXT_STAGE;
-    */
+    unsigned int flags = 0;
+    if (iobuf_available (self->sendbuf) > 0) {
+        flags |= ZKERNEL_READ_OK;
+        if (self->state.write != NULL)
+            flags |= ZKERNEL_WRITE_OK;
+    }
+    else
+    if (self->state.write != NULL)
+        flags |= ZKERNEL_WRITE_OK;
+    else
+        flags |= ZKERNEL_ENGINE_DONE;
+    *info = (protocol_engine_info_t) { .flags = flags };
 
     return 0;
-}
-
-static int
-s_read_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info)
-{
-    return -1;
-}
-
-static pdu_t *
-s_decode (protocol_engine_t *base, protocol_engine_info_t *info)
-{
-    return NULL;
 }
 
 static int
@@ -137,32 +122,37 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
     zmtp_handshake_t *self = (zmtp_handshake_t *) base;
     assert (self);
 
-    if (self->state.write_fn == NULL)
+    if (self->state.write == NULL)
         return -1;
 
-    self->state = self->state.write_fn (self, iobuf);
-    if (self->state.write_fn == NULL) {
-        if (self->error)
-            return -1;
-        assert (self->next_stage);
-        if (iobuf_available (self->sendbuf) == 0)
-            *info = (protocol_engine_info_t) { .flags = 0 };  //  TODO: Indicate next stage is ready
-        else
-            *info = (protocol_engine_info_t) { .flags = ZKERNEL_READ_OK };
+    self->state = self->state.write (self, iobuf);
+    unsigned int flags = 0;
+    if (iobuf_available (self->sendbuf) > 0) {
+        flags |= ZKERNEL_READ_OK;
+        if (self->state.write != NULL)
+            flags |= ZKERNEL_WRITE_OK;
     }
-    else {
-        *info = (protocol_engine_info_t) { .flags = ZKERNEL_WRITE_OK };
-        if (iobuf_available (self->sendbuf) > 0)
-            info->flags |= ZKERNEL_READ_OK;
-    }
+    else
+    if (self->state.write != NULL)
+        flags |= ZKERNEL_WRITE_OK;
+    else
+        flags |= ZKERNEL_ENGINE_DONE;
+    *info = (protocol_engine_info_t) { .flags = flags };
 
     return 0;
 }
 
 static int
-s_write_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info)
+s_next (protocol_engine_t **base_p, protocol_engine_info_t *info)
 {
-    return -1;
+    assert (base_p);
+    if (*base_p) {
+        zmtp_handshake_t *self = (zmtp_handshake_t *) *base_p;
+        iobuf_destroy (&self->sendbuf);
+        iobuf_destroy (&self->recvbuf);
+        *base_p = self->next_stage;
+        free (self);
+    }
 }
 
 static void
@@ -173,8 +163,8 @@ s_destroy (protocol_engine_t **base_p)
         zmtp_handshake_t *self = (zmtp_handshake_t *) *base_p;
         iobuf_destroy (&self->sendbuf);
         iobuf_destroy (&self->recvbuf);
-        free (self);
         *base_p = NULL;
+        free (self);
     }
 }
 
@@ -186,7 +176,7 @@ receive_signature_a (zmtp_handshake_t *self, iobuf_t *iobuf)
         return (state_t) { receive_signature_a };
 
     if (self->recvbuf->base [0] != 0xff) {
-        //  send identity
+        //  XXX send identity
         return (state_t) { NULL };
     }
 
@@ -202,7 +192,7 @@ receive_signature_b (zmtp_handshake_t *self, iobuf_t *iobuf)
         return (state_t) { receive_signature_b };
 
     if ((self->recvbuf->base [9] & 0x01) == 0) {
-        //  send identity
+        //  XXX send identity
         return (state_t) { NULL };
     }
 
@@ -263,16 +253,14 @@ receive_zmtp_v3_greeting (zmtp_handshake_t *self, iobuf_t *iobuf)
     if (iobuf_available (self->recvbuf) < zmtp_v3_greeting_size)
         return (state_t) { receive_zmtp_v3_greeting };
 
+    self->next_stage = zmtp_null_handshake_new_protocol_engine ();
     return (state_t) { NULL };
 }
 
-static struct protocol_engine_ops protocol_engine_ops = {
+static struct protocol_engine_ops ops = {
     .init = s_init,
-    .encode = s_encode,
     .read = s_read,
-    .read_advance = s_read_advance,
-    .decode = s_decode,
     .write = s_write,
-    .write_advance = s_write_advance,
+    .next = s_next,
     .destroy = s_destroy,
 };

@@ -185,7 +185,7 @@ static struct protocol_engine_ops ops = {
 };
 
 protocol_engine_t *
-zmtp_null_handshake_protocol_engine ()
+zmtp_null_handshake_new_protocol_engine ()
 {
     return (protocol_engine_t *) zmtp_null_handshake_new ();
 }

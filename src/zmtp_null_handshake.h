@@ -6,6 +6,6 @@
 #define __ZMTP_NULL_HANDSHAKE_INCLUDED__
 
 protocol_engine_t *
-    zmtp_null_handshake_protocol_engine ();
+    zmtp_null_handshake_new_protocol_engine ();
 
 #endif
