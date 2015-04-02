@@ -25,6 +25,18 @@ socket_options_new ()
     return self;
 }
 
+void
+socket_options_destroy (socket_options_t **self_p)
+{
+    assert (self_p);
+    if (*self_p) {
+        socket_options_t *self = *self_p;
+        free (self->socket_id);
+        free (self);
+        *self_p = NULL;
+    }
+}
+
 const char *
 socket_options_socket_id (socket_options_t *self)
 {

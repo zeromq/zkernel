@@ -9,6 +9,9 @@
 
 typedef struct socket_options socket_options_t;
 
+void
+    socket_options_destroy (socket_options_t **self_p);
+
 const char *
     socket_options_socket_id (socket_options_t *self);
 
