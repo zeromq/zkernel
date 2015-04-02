@@ -24,6 +24,7 @@ struct protocol_engine_ops {
     pdu_t *(*decode) (protocol_engine_t *self, protocol_engine_info_t *info);
     int (*write) (protocol_engine_t *self, iobuf_t *iobuf, protocol_engine_info_t *info);
     int (*write_advance) (protocol_engine_t *self, size_t n, protocol_engine_info_t *info);
+    int (*set_socket_id) (protocol_engine_t *self, const char *socket_id);
     int (*next) (protocol_engine_t **self_p, protocol_engine_info_t *info);
     void (*destroy) (protocol_engine_t **self_p);
 };
@@ -83,6 +84,9 @@ protocol_engine_write_advance (protocol_engine_t *self, size_t n, protocol_engin
 {
     return self->ops.write_advance (self, n, info);
 }
+
+int
+    protocol_engine_set_socket_id (protocol_engine_t *self, const char *socket_id);
 
 int
     protocol_engine_next (protocol_engine_t **self_p, protocol_engine_info_t *info);
