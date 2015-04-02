@@ -23,6 +23,7 @@
 struct tcp_session {
     io_object_t base;
     int fd;
+    char *socket_id;
     pdu_t *queue_head;
     pdu_t *queue_tail;
     protocol_engine_t *protocol_engine;
@@ -106,6 +107,7 @@ tcp_session_destroy (tcp_session_t **self_p)
             msg = next;
         }
         close (self->fd);
+        free (self->socket_id);
         protocol_engine_destroy (&self->protocol_engine);
         iobuf_destroy (&self->sendbuf);
         iobuf_destroy (&self->recvbuf);
@@ -329,6 +331,27 @@ s_message (io_object_t *self_, msg_t *msg)
         msg_destroy (&msg);
 
     return ZKERNEL_POLLIN | ZKERNEL_POLLOUT;
+}
+
+int
+tcp_session_set_socket_id (tcp_session_t *self, const char *socket_id)
+{
+    assert (self);
+
+    if (socket_id == NULL || socket_id [0] == '\0') {
+        free (self->socket_id);
+        self->socket_id = NULL;
+    }
+    else {
+        char *s = malloc (strlen (socket_id) + 1);
+        if (s == NULL)
+            return -1;
+        strcpy (s, socket_id);
+        free (self->socket_id);
+        self->socket_id = s;
+    }
+
+    return 0;
 }
 
 int
