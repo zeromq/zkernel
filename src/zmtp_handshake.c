@@ -32,6 +32,7 @@ struct zmtp_handshake {
     state_t state;
     iobuf_t *sendbuf;
     iobuf_t *recvbuf;
+    char *socket_id;
     protocol_engine_t *next_stage;
 };
 
@@ -143,6 +144,28 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 }
 
 static int
+s_set_socket_id (protocol_engine_t *base, const char *socket_id)
+{
+    zmtp_handshake_t *self = (zmtp_handshake_t *) base;
+    assert (self);
+
+    if (socket_id == NULL || socket_id [0] == '\0') {
+        free (self->socket_id);
+        self->socket_id = NULL;
+    }
+    else {
+        char *s = malloc (strlen (socket_id) + 1);
+        if (s == NULL)
+            return -1;
+        strcpy (s, socket_id);
+        free (self->socket_id);
+        self->socket_id = s;
+    }
+
+    return 0;
+}
+
+static int
 s_next (protocol_engine_t **base_p, protocol_engine_info_t *info)
 {
     assert (base_p);
@@ -150,6 +173,7 @@ s_next (protocol_engine_t **base_p, protocol_engine_info_t *info)
         zmtp_handshake_t *self = (zmtp_handshake_t *) *base_p;
         iobuf_destroy (&self->sendbuf);
         iobuf_destroy (&self->recvbuf);
+        free (self->socket_id);
         *base_p = self->next_stage;
         free (self);
     }
@@ -163,6 +187,7 @@ s_destroy (protocol_engine_t **base_p)
         zmtp_handshake_t *self = (zmtp_handshake_t *) *base_p;
         iobuf_destroy (&self->sendbuf);
         iobuf_destroy (&self->recvbuf);
+        free (self->socket_id);
         *base_p = NULL;
         free (self);
     }
@@ -261,6 +286,7 @@ static struct protocol_engine_ops ops = {
     .init = s_init,
     .read = s_read,
     .write = s_write,
+    .set_socket_id = s_set_socket_id,
     .next = s_next,
     .destroy = s_destroy,
 };
