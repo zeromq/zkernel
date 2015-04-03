@@ -47,7 +47,7 @@ zmtp_v3_encoder_putmsg (
     assert (self->pdu == NULL);
     self->pdu = pdu;
 
-    uint8_t *buffer = self->buffer;
+    uint8_t *buffer = self->ptr = self->buffer;
     buffer [0] = 0;     // flags
     if (pdu->pdu_size > 255) {
         buffer [0] |= 0x02;
