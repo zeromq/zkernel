@@ -7,6 +7,7 @@
 
 #include "pdu.h"
 #include "iobuf.h"
+#include "zmtp_utils.h"
 #include "zmtp_v1_frame_encoder.h"
 
 #define WAITING_FOR_PDU     0
@@ -20,9 +21,6 @@ struct zmtp_v1_frame_encoder {
     uint8_t *ptr;
     size_t bytes_left;
 };
-
-static void
-put_uint64 (uint8_t *ptr, uint64_t n);
 
 zmtp_v1_frame_encoder_t *
 zmtp_v1_frame_encoder_new (zmtp_v1_frame_encoder_info_t *info)
@@ -160,17 +158,4 @@ zmtp_v1_frame_encoder_destroy (zmtp_v1_frame_encoder_t **self_p)
         free (self);
         *self_p = NULL;
     }
-}
-
-static void
-put_uint64 (uint8_t *ptr, uint64_t n)
-{
-    *ptr++ = (uint8_t) (n >> 56);
-    *ptr++ = (uint8_t) (n >> 48);
-    *ptr++ = (uint8_t) (n >> 40);
-    *ptr++ = (uint8_t) (n >> 32);
-    *ptr++ = (uint8_t) (n >> 24);
-    *ptr++ = (uint8_t) (n >> 16);
-    *ptr++ = (uint8_t) (n >> 8);
-    *ptr   = (uint8_t)  n;
 }
