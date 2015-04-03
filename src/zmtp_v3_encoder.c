@@ -158,13 +158,13 @@ zmtp_v3_encoder_advance (
 }
 
 void
-zmtp_v3_encoder_destroy (zmtp_v3_encoder_t **base_p)
+zmtp_v3_encoder_destroy (zmtp_v3_encoder_t **self_p)
 {
-    if (*base_p) {
-        zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) *base_p;
+    if (*self_p) {
+        zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) *self_p;
         if (self->pdu)
             pdu_destroy (&self->pdu);
         free (self);
-        *base_p = NULL;
+        *self_p = NULL;
     }
 }
