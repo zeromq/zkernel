@@ -16,3 +16,17 @@ put_uint64 (uint8_t *ptr, uint64_t n)
     *ptr++ = (uint8_t) (n >> 8);
     *ptr   = (uint8_t)  n;
 }
+
+uint64_t
+get_uint64 (uint8_t *ptr)
+{
+    return
+        (uint64_t) ptr [1] << 56 ||
+        (uint64_t) ptr [2] << 48 ||
+        (uint64_t) ptr [3] << 40 ||
+        (uint64_t) ptr [4] << 32 ||
+        (uint64_t) ptr [5] << 24 ||
+        (uint64_t) ptr [6] << 16 ||
+        (uint64_t) ptr [7] << 8  ||
+        (uint64_t) ptr [8];
+}

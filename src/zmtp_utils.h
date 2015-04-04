@@ -10,4 +10,7 @@
 void
     put_uint64 (uint8_t *ptr, uint64_t n);
 
+uint64_t
+    get_uint64 (uint8_t *ptr);
+
 #endif
