@@ -7,14 +7,14 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "zmtp_v3_encoder.h"
+#include "zmtp_v2_frame_encoder.h"
 #include "zmtp_v3_decoder.h"
 #include "protocol_engine.h"
 
 struct zmtp_v3_protocol_engine {
     protocol_engine_t base;
-    zmtp_v3_encoder_t *encoder;
-    zmtp_v3_encoder_info_t encoder_info;
+    zmtp_v2_frame_encoder_t *encoder;
+    zmtp_v2_frame_encoder_info_t encoder_info;
     zmtp_v3_decoder_t *decoder;
     zmtp_v3_decoder_info_t decoder_info;
 };
@@ -33,11 +33,11 @@ s_new ()
             .base.ops = ops,
         };
 
-        self->encoder = zmtp_v3_encoder_new (&self->encoder_info);
+        self->encoder = zmtp_v2_frame_encoder_new (&self->encoder_info);
         self->decoder = zmtp_v3_decoder_new (&self->decoder_info);
 
         if (self->encoder == NULL || self->decoder == NULL) {
-            zmtp_v3_encoder_destroy (&self->encoder);
+            zmtp_v2_frame_encoder_destroy (&self->encoder);
             zmtp_v3_decoder_destroy (&self->decoder);
             free (self);
             self = NULL;
@@ -53,7 +53,7 @@ s_init (protocol_engine_t *base, protocol_engine_info_t *info)
     zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
     assert (self);
 
-    zmtp_v3_encoder_info_t *encoder_info =
+    zmtp_v2_frame_encoder_info_t *encoder_info =
         &self->encoder_info;
     zmtp_v3_decoder_info_t *decoder_info =
         &self->decoder_info;
@@ -75,13 +75,13 @@ s_encode (protocol_engine_t *base, pdu_t *pdu, protocol_engine_info_t *info)
     zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
     assert (self);
 
-    zmtp_v3_encoder_info_t *encoder_info =
+    zmtp_v2_frame_encoder_info_t *encoder_info =
         &self->encoder_info;
     zmtp_v3_decoder_info_t *decoder_info =
         &self->decoder_info;
 
     const int rc =
-        zmtp_v3_encoder_putmsg (self->encoder, pdu, encoder_info);
+        zmtp_v2_frame_encoder_putmsg (self->encoder, pdu, encoder_info);
     if (rc == -1)
         return -1;
 
@@ -102,7 +102,7 @@ s_decode (protocol_engine_t *base, protocol_engine_info_t *info)
     zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
     assert (self);
 
-    zmtp_v3_encoder_info_t *encoder_info =
+    zmtp_v2_frame_encoder_info_t *encoder_info =
         &self->encoder_info;
     zmtp_v3_decoder_info_t *decoder_info =
         &self->decoder_info;
@@ -129,13 +129,13 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
     zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
     assert (self);
 
-    zmtp_v3_encoder_info_t *encoder_info =
+    zmtp_v2_frame_encoder_info_t *encoder_info =
         &self->encoder_info;
     zmtp_v3_decoder_info_t *decoder_info =
         &self->decoder_info;
 
     const int rc =
-        zmtp_v3_encoder_read (self->encoder, iobuf, encoder_info);
+        zmtp_v2_frame_encoder_read (self->encoder, iobuf, encoder_info);
     if (rc == -1)
         return -1;
 
@@ -156,13 +156,13 @@ s_read_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info)
     zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
     assert (self);
 
-    zmtp_v3_encoder_info_t *encoder_info =
+    zmtp_v2_frame_encoder_info_t *encoder_info =
         &self->encoder_info;
     zmtp_v3_decoder_info_t *decoder_info =
         &self->decoder_info;
 
     const int rc =
-        zmtp_v3_encoder_advance (self->encoder, n, encoder_info);
+        zmtp_v2_frame_encoder_advance (self->encoder, n, encoder_info);
     if (rc == -1)
         return -1;
 
@@ -183,7 +183,7 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
     zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
     assert (self);
 
-    zmtp_v3_encoder_info_t *encoder_info =
+    zmtp_v2_frame_encoder_info_t *encoder_info =
         &self->encoder_info;
     zmtp_v3_decoder_info_t *decoder_info =
         &self->decoder_info;
@@ -210,7 +210,7 @@ s_write_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info
     zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
     assert (self);
 
-    zmtp_v3_encoder_info_t *encoder_info =
+    zmtp_v2_frame_encoder_info_t *encoder_info =
         &self->encoder_info;
     zmtp_v3_decoder_info_t *decoder_info =
         &self->decoder_info;
@@ -238,7 +238,7 @@ s_destroy (protocol_engine_t **base_p)
     if (*base_p) {
         zmtp_v3_protocol_engine_t *self =
             (zmtp_v3_protocol_engine_t *) *base_p;
-        zmtp_v3_encoder_destroy (&self->encoder);
+        zmtp_v2_frame_encoder_destroy (&self->encoder);
         zmtp_v3_decoder_destroy (&self->decoder);
         free (self);
         *base_p = NULL;

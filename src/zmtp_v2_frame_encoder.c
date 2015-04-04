@@ -8,13 +8,13 @@
 #include "iobuf.h"
 #include "pdu.h"
 #include "zmtp_utils.h"
-#include "zmtp_v3_encoder.h"
+#include "zmtp_v2_frame_encoder.h"
 
 #define WAITING_FOR_PDU     0
 #define READING_HEADER      1
 #define READING_BODY        2
 
-struct zmtp_v3_encoder {
+struct zmtp_v2_frame_encoder {
     int state;
     uint8_t buffer [9];
     pdu_t *pdu;
@@ -22,22 +22,24 @@ struct zmtp_v3_encoder {
     size_t bytes_left;
 };
 
-zmtp_v3_encoder_t *
-zmtp_v3_encoder_new (zmtp_v3_encoder_info_t *info)
+zmtp_v2_frame_encoder_t *
+zmtp_v2_frame_encoder_new (zmtp_v2_frame_encoder_info_t *info)
 {
-    zmtp_v3_encoder_t *self =
-        (zmtp_v3_encoder_t *) malloc (sizeof *self);
+    zmtp_v2_frame_encoder_t *self =
+        (zmtp_v2_frame_encoder_t *) malloc (sizeof *self);
     if (self) {
-        *self = (zmtp_v3_encoder_t) { .state = WAITING_FOR_PDU };
-        *info = (zmtp_v3_encoder_info_t) { .flags = ZMTP_V3_ENCODER_READY };
+        *self = (zmtp_v2_frame_encoder_t) { .state = WAITING_FOR_PDU };
+        *info = (zmtp_v2_frame_encoder_info_t) {
+            .flags = ZMTP_V2_FRAME_ENCODER_READY
+        };
     }
 
     return self;
 }
 
 int
-zmtp_v3_encoder_putmsg (
-    zmtp_v3_encoder_t *self, pdu_t *pdu, zmtp_v3_encoder_info_t *info)
+zmtp_v2_frame_encoder_putmsg (zmtp_v2_frame_encoder_t *self,
+    pdu_t *pdu, zmtp_v2_frame_encoder_info_t *info)
 {
     assert (self);
 
@@ -59,14 +61,16 @@ zmtp_v3_encoder_putmsg (
         self->bytes_left = 2;
     }
 
-    *info = (zmtp_v3_encoder_info_t) { .flags = ZMTP_V3_ENCODER_READ_OK };
+    *info = (zmtp_v2_frame_encoder_info_t) {
+        .flags = ZMTP_V2_FRAME_ENCODER_READ_OK
+    };
 
     return 0;
 }
 
 int
-zmtp_v3_encoder_read (
-    zmtp_v3_encoder_t *self, iobuf_t *iobuf, zmtp_v3_encoder_info_t *info)
+zmtp_v2_frame_encoder_read (zmtp_v2_frame_encoder_t *self,
+    iobuf_t *iobuf, zmtp_v2_frame_encoder_info_t *info)
 {
     assert (self);
 
@@ -103,10 +107,12 @@ zmtp_v3_encoder_read (
     }
 
     if (self->state == WAITING_FOR_PDU)
-        *info = (zmtp_v3_encoder_info_t) { .flags = ZMTP_V3_ENCODER_READY };
+        *info = (zmtp_v2_frame_encoder_info_t) {
+            .flags = ZMTP_V2_FRAME_ENCODER_READY
+        };
     else
-        *info = (zmtp_v3_encoder_info_t) {
-            .flags = ZMTP_V3_ENCODER_READ_OK,
+        *info = (zmtp_v2_frame_encoder_info_t) {
+            .flags = ZMTP_V2_FRAME_ENCODER_READ_OK,
             .buffer = self->ptr,
             .buffer_size = self->bytes_left,
         };
@@ -115,8 +121,8 @@ zmtp_v3_encoder_read (
 }
 
 int
-zmtp_v3_encoder_advance (
-    zmtp_v3_encoder_t *self, size_t n, zmtp_v3_encoder_info_t *info)
+zmtp_v2_frame_encoder_advance (zmtp_v2_frame_encoder_t *self,
+    size_t n, zmtp_v2_frame_encoder_info_t *info)
 {
     assert (self);
 
@@ -145,11 +151,13 @@ zmtp_v3_encoder_advance (
     if (self->bytes_left == 0) {
         pdu_destroy (&self->pdu);
         self->state = WAITING_FOR_PDU;
-        *info = (zmtp_v3_encoder_info_t) {.flags = ZMTP_V3_ENCODER_READY };
+        *info = (zmtp_v2_frame_encoder_info_t) {
+            .flags = ZMTP_V2_FRAME_ENCODER_READY
+        };
     }
     else
-        *info = (zmtp_v3_encoder_info_t) {
-            .flags = ZMTP_V3_ENCODER_READ_OK,
+        *info = (zmtp_v2_frame_encoder_info_t) {
+            .flags = ZMTP_V2_FRAME_ENCODER_READ_OK,
             .buffer = self->ptr,
             .buffer_size = self->bytes_left,
         };
@@ -158,10 +166,10 @@ zmtp_v3_encoder_advance (
 }
 
 void
-zmtp_v3_encoder_destroy (zmtp_v3_encoder_t **self_p)
+zmtp_v2_frame_encoder_destroy (zmtp_v2_frame_encoder_t **self_p)
 {
     if (*self_p) {
-        zmtp_v3_encoder_t *self = (zmtp_v3_encoder_t *) *self_p;
+        zmtp_v2_frame_encoder_t *self = (zmtp_v2_frame_encoder_t *) *self_p;
         if (self->pdu)
             pdu_destroy (&self->pdu);
         free (self);

@@ -11,14 +11,14 @@
 
 #include "zkernel.h"
 #include "protocol_engine.h"
-#include "zmtp_v3_encoder.h"
+#include "zmtp_v2_frame_encoder.h"
 #include "zmtp_v3_decoder.h"
 #include "pdu.h"
 #include "zmtp_null_handshake.h"
 
 struct zmtp_null_handshake {
     protocol_engine_t base;
-    zmtp_v3_encoder_t *encoder;
+    zmtp_v2_frame_encoder_t *encoder;
     zmtp_v3_decoder_t *decoder;
     bool msg_sent;
     bool msg_received;
@@ -41,14 +41,14 @@ zmtp_null_handshake_new ()
             .base.ops = ops,
         };
 
-        zmtp_v3_encoder_info_t encoder_info;
-        self->encoder = zmtp_v3_encoder_new (&encoder_info);
+        zmtp_v2_frame_encoder_info_t encoder_info;
+        self->encoder = zmtp_v2_frame_encoder_new (&encoder_info);
 
         zmtp_v3_decoder_info_t decoder_info;
         self->decoder = zmtp_v3_decoder_new (&decoder_info);
 
         if (self->encoder == NULL || self->decoder == NULL) {
-            zmtp_v3_encoder_destroy (&self->encoder);
+            zmtp_v2_frame_encoder_destroy (&self->encoder);
             zmtp_v3_decoder_destroy (&self->decoder);
             free (self);
             self = NULL;
@@ -72,13 +72,13 @@ s_init (protocol_engine_t *base, protocol_engine_info_t *info)
 
     memcpy (pdu->pdu_data, msg, sizeof msg);
 
-    zmtp_v3_encoder_info_t encoder_info;
+    zmtp_v2_frame_encoder_info_t encoder_info;
     const int rc =
-        zmtp_v3_encoder_putmsg (self->encoder, pdu, &encoder_info);
+        zmtp_v2_frame_encoder_putmsg (self->encoder, pdu, &encoder_info);
     if (rc == -1)
         return -1;
 
-    assert ((encoder_info.flags & ZMTP_V3_ENCODER_READ_OK) != 0);
+    assert ((encoder_info.flags & ZMTP_V2_FRAME_ENCODER_READ_OK) != 0);
 
     *info = (protocol_engine_info_t) {
         .flags = ZKERNEL_READ_OK | ZKERNEL_WRITE_OK,
@@ -96,12 +96,12 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
     if (self->msg_sent)
         return -1;
 
-    zmtp_v3_encoder_info_t encoder_info;
+    zmtp_v2_frame_encoder_info_t encoder_info;
     const int rc =
-        zmtp_v3_encoder_read (self->encoder, iobuf, &encoder_info);
+        zmtp_v2_frame_encoder_read (self->encoder, iobuf, &encoder_info);
     if (rc == -1)
         return -1;
-    if ((encoder_info.flags & ZMTP_V3_ENCODER_READ_OK) == 0)
+    if ((encoder_info.flags & ZMTP_V2_FRAME_ENCODER_READ_OK) == 0)
         self->msg_sent = true;
 
     *info = (protocol_engine_info_t) { .flags = 0 };
@@ -158,7 +158,7 @@ s_destroy (protocol_engine_t **base_p)
     assert (base_p);
     if (*base_p) {
         zmtp_null_handshake_t *self = (zmtp_null_handshake_t *) *base_p;
-        zmtp_v3_encoder_destroy (&self->encoder);
+        zmtp_v2_frame_encoder_destroy (&self->encoder);
         zmtp_v3_decoder_destroy (&self->decoder);
         free (self);
         *base_p = NULL;
