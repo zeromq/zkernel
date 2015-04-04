@@ -12,14 +12,14 @@
 #include "zkernel.h"
 #include "protocol_engine.h"
 #include "zmtp_v2_frame_encoder.h"
-#include "zmtp_v3_decoder.h"
+#include "zmtp_v2_frame_decoder.h"
 #include "pdu.h"
 #include "zmtp_null_handshake.h"
 
 struct zmtp_null_handshake {
     protocol_engine_t base;
     zmtp_v2_frame_encoder_t *encoder;
-    zmtp_v3_decoder_t *decoder;
+    zmtp_v2_frame_decoder_t *decoder;
     bool msg_sent;
     bool msg_received;
 };
@@ -44,12 +44,12 @@ zmtp_null_handshake_new ()
         zmtp_v2_frame_encoder_info_t encoder_info;
         self->encoder = zmtp_v2_frame_encoder_new (&encoder_info);
 
-        zmtp_v3_decoder_info_t decoder_info;
-        self->decoder = zmtp_v3_decoder_new (&decoder_info);
+        zmtp_v2_frame_decoder_info_t decoder_info;
+        self->decoder = zmtp_v2_frame_decoder_new (&decoder_info);
 
         if (self->encoder == NULL || self->decoder == NULL) {
             zmtp_v2_frame_encoder_destroy (&self->encoder);
-            zmtp_v3_decoder_destroy (&self->decoder);
+            zmtp_v2_frame_decoder_destroy (&self->decoder);
             free (self);
             self = NULL;
         }
@@ -124,15 +124,15 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
     if (self->msg_received)
         return -1;
 
-    zmtp_v3_decoder_info_t decoder_info;
+    zmtp_v2_frame_decoder_info_t decoder_info;
     const int rc =
-        zmtp_v3_decoder_write (self->decoder, iobuf, &decoder_info);
+        zmtp_v2_frame_decoder_write (self->decoder, iobuf, &decoder_info);
     if (rc == -1)
         return -1;
 
-    if ((decoder_info.flags & ZMTP_V3_DECODER_READY) != 0) {
+    if ((decoder_info.flags & ZMTP_V2_FRAME_DECODER_READY) != 0) {
         pdu_t *pdu =
-            zmtp_v3_decoder_getmsg (self->decoder, &decoder_info);
+            zmtp_v2_frame_decoder_getmsg (self->decoder, &decoder_info);
         if (rc == -1 || pdu == NULL)
             return -1;
         if (process_msg (self, pdu) == -1)
@@ -159,7 +159,7 @@ s_destroy (protocol_engine_t **base_p)
     if (*base_p) {
         zmtp_null_handshake_t *self = (zmtp_null_handshake_t *) *base_p;
         zmtp_v2_frame_encoder_destroy (&self->encoder);
-        zmtp_v3_decoder_destroy (&self->decoder);
+        zmtp_v2_frame_decoder_destroy (&self->decoder);
         free (self);
         *base_p = NULL;
     }

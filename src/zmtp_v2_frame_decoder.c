@@ -10,9 +10,9 @@
 #include "iobuf.h"
 #include "pdu.h"
 #include "zmtp_utils.h"
-#include "zmtp_v3_decoder.h"
+#include "zmtp_v2_frame_decoder.h"
 
-struct zmtp_v3_decoder {
+struct zmtp_v2_frame_decoder {
     int state;
     uint8_t buffer [9];
     pdu_t *pdu;
@@ -20,7 +20,7 @@ struct zmtp_v3_decoder {
     size_t bytes_left;
 };
 
-typedef struct zmtp_v3_decoder zmtp_v3_decoder_t;
+typedef struct zmtp_v2_frame_decoder zmtp_v2_frame_decoder_t;
 
 #define DECODING_FLAGS      0
 #define DECODING_LENGTH     1
@@ -30,25 +30,27 @@ typedef struct zmtp_v3_decoder zmtp_v3_decoder_t;
 static size_t
 s_decode_length (const uint8_t *ptr);
 
-zmtp_v3_decoder_t *
-zmtp_v3_decoder_new (zmtp_v3_decoder_info_t *info)
+zmtp_v2_frame_decoder_t *
+zmtp_v2_frame_decoder_new (zmtp_v2_frame_decoder_info_t *info)
 {
-    zmtp_v3_decoder_t *self =
-        (zmtp_v3_decoder_t *) malloc (sizeof *self);
+    zmtp_v2_frame_decoder_t *self =
+        (zmtp_v2_frame_decoder_t *) malloc (sizeof *self);
     if (self) {
-        *self = (zmtp_v3_decoder_t) {
+        *self = (zmtp_v2_frame_decoder_t) {
             .state = DECODING_FLAGS,
             .ptr = self->buffer,
             .bytes_left = 1
         };
-        *info = (zmtp_v3_decoder_info_t) { .flags = ZMTP_V3_DECODER_WRITE_OK };
+        *info = (zmtp_v2_frame_decoder_info_t) {
+            .flags = ZMTP_V2_FRAME_DECODER_WRITE_OK
+        };
     }
     return self;
 }
 
 int
-zmtp_v3_decoder_write (
-    zmtp_v3_decoder_t *self, iobuf_t *iobuf, zmtp_v3_decoder_info_t *info)
+zmtp_v2_frame_decoder_write (zmtp_v2_frame_decoder_t *self,
+    iobuf_t *iobuf, zmtp_v2_frame_decoder_info_t *info)
 {
     assert (self);
 
@@ -95,10 +97,12 @@ zmtp_v3_decoder_write (
     }
 
     if (self->state == PDU_READY)
-        *info = (zmtp_v3_decoder_info_t) { .flags = ZMTP_V3_DECODER_READY };
+        *info = (zmtp_v2_frame_decoder_info_t) {
+            .flags = ZMTP_V2_FRAME_DECODER_READY
+        };
     else
-        *info = (zmtp_v3_decoder_info_t) {
-            .flags = ZMTP_V3_DECODER_WRITE_OK,
+        *info = (zmtp_v2_frame_decoder_info_t) {
+            .flags = ZMTP_V2_FRAME_DECODER_WRITE_OK,
             .buffer = self->ptr,
             .buffer_size = self->bytes_left,
         };
@@ -107,8 +111,8 @@ zmtp_v3_decoder_write (
 }
 
 int
-zmtp_v3_decoder_advance (
-    zmtp_v3_decoder_t *self, size_t n, zmtp_v3_decoder_info_t *info)
+zmtp_v2_frame_decoder_advance (
+    zmtp_v2_frame_decoder_t *self, size_t n, zmtp_v2_frame_decoder_info_t *info)
 {
     assert (self);
 
@@ -124,10 +128,12 @@ zmtp_v3_decoder_advance (
         self->state = PDU_READY;
 
     if (self->state == PDU_READY)
-        *info = (zmtp_v3_decoder_info_t) { .flags = ZMTP_V3_DECODER_READY };
+        *info = (zmtp_v2_frame_decoder_info_t) {
+            .flags = ZMTP_V2_FRAME_DECODER_READY
+        };
     else
-        *info = (zmtp_v3_decoder_info_t) {
-            .flags = ZMTP_V3_DECODER_WRITE_OK,
+        *info = (zmtp_v2_frame_decoder_info_t) {
+            .flags = ZMTP_V2_FRAME_DECODER_WRITE_OK,
             .buffer = self->ptr,
             .buffer_size = self->bytes_left,
         };
@@ -136,8 +142,8 @@ zmtp_v3_decoder_advance (
 }
 
 pdu_t *
-zmtp_v3_decoder_getmsg (
-    zmtp_v3_decoder_t *self, zmtp_v3_decoder_info_t *info)
+zmtp_v2_frame_decoder_getmsg (
+    zmtp_v2_frame_decoder_t *self, zmtp_v2_frame_decoder_info_t *info)
 {
     assert (self);
 
@@ -150,17 +156,19 @@ zmtp_v3_decoder_getmsg (
     self->ptr = self->buffer;
     self->bytes_left = 1;
 
-    *info = (zmtp_v3_decoder_info_t) { .flags = ZMTP_V3_DECODER_WRITE_OK };
+    *info = (zmtp_v2_frame_decoder_info_t) {
+        .flags = ZMTP_V2_FRAME_DECODER_WRITE_OK
+    };
 
     return pdu;
 }
 
 void
-zmtp_v3_decoder_destroy (zmtp_v3_decoder_t **self_p)
+zmtp_v2_frame_decoder_destroy (zmtp_v2_frame_decoder_t **self_p)
 {
     assert (self_p);
     if (*self_p) {
-        zmtp_v3_decoder_t *self = (zmtp_v3_decoder_t *) *self_p;
+        zmtp_v2_frame_decoder_t *self = (zmtp_v2_frame_decoder_t *) *self_p;
         pdu_destroy (&self->pdu);
         free (self);
         *self_p = NULL;
@@ -175,4 +183,3 @@ s_decode_length (const uint8_t *ptr)
     else
         return get_uint64 (ptr + 1);
 }
-
