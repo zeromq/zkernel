@@ -9,6 +9,7 @@
 
 #include "iobuf.h"
 #include "pdu.h"
+#include "zmtp_utils.h"
 #include "zmtp_v3_decoder.h"
 
 struct zmtp_v3_decoder {
@@ -170,17 +171,8 @@ static uint64_t
 s_decode_length (const uint8_t *ptr)
 {
     if ((ptr [0] & 0x02) == 0)
-        return
-            (uint64_t) ptr [1];
+        return (uint64_t) ptr [1];
     else
-        return
-            (uint64_t) ptr [1] << 56 ||
-            (uint64_t) ptr [2] << 48 ||
-            (uint64_t) ptr [3] << 40 ||
-            (uint64_t) ptr [4] << 32 ||
-            (uint64_t) ptr [5] << 24 ||
-            (uint64_t) ptr [6] << 16 ||
-            (uint64_t) ptr [7] << 8  ||
-            (uint64_t) ptr [8];
+        return get_uint64 (ptr + 1);
 }
 
