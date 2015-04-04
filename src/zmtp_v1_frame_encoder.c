@@ -10,7 +10,7 @@
 #include "zmtp_utils.h"
 #include "zmtp_v1_frame_encoder.h"
 
-#define WAITING_FOR_PDU     0
+#define WAITING_FOR_FRAME   0
 #define READING_HEADER      1
 #define READING_BODY        2
 
@@ -29,7 +29,7 @@ zmtp_v1_frame_encoder_new (zmtp_v1_frame_encoder_info_t *info)
         (zmtp_v1_frame_encoder_t *) malloc (sizeof *self);
     if (self) {
         *self = (zmtp_v1_frame_encoder_t) {
-            .state = WAITING_FOR_PDU,
+            .state = WAITING_FOR_FRAME,
         };
         *info = (zmtp_v1_frame_encoder_info_t) {
             .flags = ZMTP_V1_FRAME_ENCODER_READY,
@@ -44,7 +44,7 @@ zmtp_v1_frame_encoder_putmsg (zmtp_v1_frame_encoder_t *self,
     pdu_t *pdu, zmtp_v1_frame_encoder_info_t *info)
 {
     assert (self);
-    assert (self->state == WAITING_FOR_PDU);
+    assert (self->state == WAITING_FOR_FRAME);
     assert (self->pdu == NULL);
 
     self->pdu = pdu;
@@ -98,11 +98,11 @@ zmtp_v1_frame_encoder_read (zmtp_v1_frame_encoder_t *self,
 
         if (self->bytes_left == 0) {
             pdu_destroy (&self->pdu);
-            self->state = WAITING_FOR_PDU;
+            self->state = WAITING_FOR_FRAME;
         }
     }
 
-    if (self->state == WAITING_FOR_PDU || self->state == READING_HEADER)
+    if (self->state == WAITING_FOR_FRAME || self->state == READING_HEADER)
         *info = (zmtp_v1_frame_encoder_info_t) {
             .flags = ZMTP_V1_FRAME_ENCODER_READY,
         };
@@ -132,7 +132,7 @@ zmtp_v1_frame_encoder_advance (zmtp_v1_frame_encoder_t *self,
 
     if (self->bytes_left == 0) {
         pdu_destroy (&self->pdu);
-        self->state = WAITING_FOR_PDU;
+        self->state = WAITING_FOR_FRAME;
         *info = (zmtp_v1_frame_encoder_info_t) {
             .flags = ZMTP_V1_FRAME_ENCODER_READY,
         };
