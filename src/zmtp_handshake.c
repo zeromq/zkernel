@@ -9,7 +9,9 @@
 #include <stdlib.h>
 
 #include "zkernel.h"
+#include "zmtp_utils.h"
 #include "zmtp_handshake.h"
+#include "zmtp_v1_exchange_id.h"
 #include "zmtp_null_handshake.h"
 
 static const int zmtp_1_0   = 0;
@@ -83,7 +85,11 @@ s_init (protocol_engine_t *base, protocol_engine_info_t *info)
     zmtp_handshake_t *self = (zmtp_handshake_t *) base;
     assert (self);
 
-    const uint8_t signature [] = { 0xff, 0, 0, 0, 0, 0, 0, 0, 1, 0x7f };
+    const size_t socket_id_len =
+        self->socket_id ? strlen (self->socket_id) : 0;
+
+    uint8_t signature [] = { 0xff, 0, 0, 0, 0, 0, 0, 0, 1, 0x7f };
+    put_uint64 (signature + 1, socket_id_len + 1);
     iobuf_write (self->sendbuf, signature, sizeof signature);
     assert (iobuf_available (self->sendbuf) == sizeof signature);
 
@@ -199,32 +205,40 @@ receive_signature_a (zmtp_handshake_t *self, iobuf_t *iobuf)
     iobuf_copy (self->recvbuf, iobuf, 1);
     if (iobuf_available (self->recvbuf) < 1)
         return (state_t) { receive_signature_a };
-
-    if (self->recvbuf->base [0] != 0xff) {
-        //  XXX send identity
+    else
+    if (self->recvbuf->base [0] == 0xff)
+        return receive_signature_b (self, iobuf);
+    else {
+        const uint64_t peer_id_length =
+            get_uint64 (self->recvbuf->base + 1);
+        if (peer_id_length > 0)
+            self->next_stage = zmtp_v1_exchange_id_new_protocol_engine (
+                     self->socket_id, peer_id_length - 1);
         return (state_t) { NULL };
     }
-
-    return receive_signature_b (self, iobuf);
 }
 
 static state_t
 receive_signature_b (zmtp_handshake_t *self, iobuf_t *iobuf)
 {
-    size_t n = zmtp_signature_size - iobuf_available (self->recvbuf);
+    const size_t n = zmtp_signature_size - iobuf_available (self->recvbuf);
     iobuf_copy (self->recvbuf, iobuf, n);
     if (iobuf_available (self->recvbuf) < zmtp_signature_size)
         return (state_t) { receive_signature_b };
-
-    if ((self->recvbuf->base [9] & 0x01) == 0) {
-        //  XXX send identity
+    else
+    if ((self->recvbuf->base [9] & 0x01) == 0x01) {
+        const size_t n = iobuf_write_byte (self->sendbuf, zmtp_3_0);
+        assert (n == 1);
+        return receive_zmtp_version (self, iobuf);
+    }
+    else {
+        const uint64_t peer_id_length =
+            get_uint64 (self->recvbuf->base + 1);
+        if (peer_id_length > 0)
+            self->next_stage = zmtp_v1_exchange_id_new_protocol_engine (
+                     self->socket_id, peer_id_length - 1);
         return (state_t) { NULL };
     }
-
-    n = iobuf_write_byte (self->sendbuf, zmtp_3_0);
-    assert (n == 1);
-
-    return receive_zmtp_version (self, iobuf);
 }
 
 static state_t
