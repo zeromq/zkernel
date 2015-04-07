@@ -10,6 +10,7 @@
 #include "iobuf.h"
 #include "zkernel.h"
 #include "protocol_engine.h"
+#include "zmtp_v1_frame_codec.h"
 #include "zmtp_v1_exchange_id.h"
 
 struct zmtp_v1_exchange_id {
@@ -75,8 +76,10 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
         flags |= ZKERNEL_READ_OK;
     if (iobuf_space (self->recvbuf) > 0)
         flags |= ZKERNEL_WRITE_OK;
-    if (flags == 0)
+    if (flags == 0) {
+        self->next_stage = zmtp_v1_frame_codec_new_protocol_engine ();
         flags |= ZKERNEL_ENGINE_DONE;
+    }
 
     *info = (protocol_engine_info_t) { .flags = flags };
 
@@ -95,8 +98,10 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
         flags |= ZKERNEL_READ_OK;
     if (iobuf_space (self->recvbuf) > 0)
         flags |= ZKERNEL_WRITE_OK;
-    if (flags == 0)
+    if (flags == 0) {
+        self->next_stage = zmtp_v1_frame_codec_new_protocol_engine ();
         flags |= ZKERNEL_ENGINE_DONE;
+    }
 
     *info = (protocol_engine_info_t) { .flags = flags };
 
