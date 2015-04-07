@@ -11,7 +11,7 @@
 #include "zmtp_v2_frame_decoder.h"
 #include "protocol_engine.h"
 
-struct zmtp_v3_protocol_engine {
+struct zmtp_v2_frame_codec {
     protocol_engine_t base;
     zmtp_v2_frame_encoder_t *encoder;
     zmtp_v2_frame_encoder_info_t encoder_info;
@@ -19,17 +19,17 @@ struct zmtp_v3_protocol_engine {
     zmtp_v2_frame_decoder_info_t decoder_info;
 };
 
-typedef struct zmtp_v3_protocol_engine zmtp_v3_protocol_engine_t;
+typedef struct zmtp_v2_frame_codec zmtp_v2_frame_codec_t;
 
 static struct protocol_engine_ops ops;
 
-static zmtp_v3_protocol_engine_t *
+static zmtp_v2_frame_codec_t *
 s_new ()
 {
-    zmtp_v3_protocol_engine_t *self =
-        (zmtp_v3_protocol_engine_t *) malloc (sizeof *self);
+    zmtp_v2_frame_codec_t *self =
+        (zmtp_v2_frame_codec_t *) malloc (sizeof *self);
     if (self) {
-        *self = (zmtp_v3_protocol_engine_t) {
+        *self = (zmtp_v2_frame_codec_t) {
             .base.ops = ops,
         };
 
@@ -50,7 +50,7 @@ s_new ()
 static int
 s_init (protocol_engine_t *base, protocol_engine_info_t *info)
 {
-    zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
+    zmtp_v2_frame_codec_t *self = (zmtp_v2_frame_codec_t *) base;
     assert (self);
 
     zmtp_v2_frame_encoder_info_t *encoder_info =
@@ -72,7 +72,7 @@ s_init (protocol_engine_t *base, protocol_engine_info_t *info)
 static int
 s_encode (protocol_engine_t *base, pdu_t *pdu, protocol_engine_info_t *info)
 {
-    zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
+    zmtp_v2_frame_codec_t *self = (zmtp_v2_frame_codec_t *) base;
     assert (self);
 
     zmtp_v2_frame_encoder_info_t *encoder_info =
@@ -99,7 +99,7 @@ s_encode (protocol_engine_t *base, pdu_t *pdu, protocol_engine_info_t *info)
 static pdu_t *
 s_decode (protocol_engine_t *base, protocol_engine_info_t *info)
 {
-    zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
+    zmtp_v2_frame_codec_t *self = (zmtp_v2_frame_codec_t *) base;
     assert (self);
 
     zmtp_v2_frame_encoder_info_t *encoder_info =
@@ -126,7 +126,7 @@ s_decode (protocol_engine_t *base, protocol_engine_info_t *info)
 static int
 s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 {
-    zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
+    zmtp_v2_frame_codec_t *self = (zmtp_v2_frame_codec_t *) base;
     assert (self);
 
     zmtp_v2_frame_encoder_info_t *encoder_info =
@@ -153,7 +153,7 @@ s_read (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 static int
 s_read_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info)
 {
-    zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
+    zmtp_v2_frame_codec_t *self = (zmtp_v2_frame_codec_t *) base;
     assert (self);
 
     zmtp_v2_frame_encoder_info_t *encoder_info =
@@ -180,7 +180,7 @@ s_read_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info)
 static int
 s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 {
-    zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
+    zmtp_v2_frame_codec_t *self = (zmtp_v2_frame_codec_t *) base;
     assert (self);
 
     zmtp_v2_frame_encoder_info_t *encoder_info =
@@ -207,7 +207,7 @@ s_write (protocol_engine_t *base, iobuf_t *iobuf, protocol_engine_info_t *info)
 static int
 s_write_advance (protocol_engine_t *base, size_t n, protocol_engine_info_t *info)
 {
-    zmtp_v3_protocol_engine_t *self = (zmtp_v3_protocol_engine_t *) base;
+    zmtp_v2_frame_codec_t *self = (zmtp_v2_frame_codec_t *) base;
     assert (self);
 
     zmtp_v2_frame_encoder_info_t *encoder_info =
@@ -236,8 +236,8 @@ s_destroy (protocol_engine_t **base_p)
 {
     assert (base_p);
     if (*base_p) {
-        zmtp_v3_protocol_engine_t *self =
-            (zmtp_v3_protocol_engine_t *) *base_p;
+        zmtp_v2_frame_codec_t *self =
+            (zmtp_v2_frame_codec_t *) *base_p;
         zmtp_v2_frame_encoder_destroy (&self->encoder);
         zmtp_v2_frame_decoder_destroy (&self->decoder);
         free (self);
@@ -257,7 +257,7 @@ static struct protocol_engine_ops ops = {
 };
 
 protocol_engine_t *
-zmtp_v3_traffic_protocol_engine ()
+zmtp_v2_frame_codec_new_protocol_engine ()
 {
     return (protocol_engine_t *) s_new ();
 }
