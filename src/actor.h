@@ -20,8 +20,6 @@ struct actor {
     struct actor_ftab ftab;
 };
 
-typedef struct actor actor_ifc_t;
-
 int
     actor_send (actor_t *self, struct msg_t *msg);
 

@@ -13,7 +13,7 @@ struct io_object;
 
 struct msg_t {
     int msg_type;
-    actor_ifc_t reply_to;
+    actor_t reply_to;
     struct msg_t *next;
     struct io_object *io_object;
     int event_mask;
