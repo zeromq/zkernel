@@ -16,7 +16,7 @@
 #include "tcp_listener.h"
 #include "tcp_connector.h"
 #include "tcp_session.h"
-#include "mailbox.h"
+#include "actor.h"
 #include "io_object.h"
 #include "socket.h"
 #include "atomic.h"
@@ -27,12 +27,12 @@
 
 struct socket {
     int ctrl_fd;
-    struct mailbox reactor;
+    struct actor reactor;
     void *mbox;
     tcp_session_t *sessions [MAX_SESSIONS];
     size_t current_session;
     size_t active_sessions;
-    struct mailbox mailbox_ifc;
+    struct actor actor_ifc;
 };
 
 static int
@@ -67,10 +67,10 @@ socket_new (reactor_t *reactor)
     }
     *self = (socket_t) {
         .ctrl_fd = ctrl_fd,
-        .reactor = reactor_mailbox (reactor),
-        .mailbox_ifc = {
+        .reactor = reactor_actor (reactor),
+        .actor_ifc = {
             .object = self,
-            .ftab = { .enqueue = s_enqueue_msg }
+            .ftab = { .send = s_enqueue_msg }
         }
     };
     return self;
@@ -131,7 +131,7 @@ socket_bind (socket_t *self, unsigned short port,
         protocol_engine_constructor_t *protocol_engine_constructor)
 {
     tcp_listener_t *listener =
-        tcp_listener_new (protocol_engine_constructor, &self->mailbox_ifc);
+        tcp_listener_new (protocol_engine_constructor, &self->actor_ifc);
     if (!listener)
         goto fail;
     int rc = tcp_listener_bind (listener, port);
@@ -140,9 +140,9 @@ socket_bind (socket_t *self, unsigned short port,
     msg_t *msg = msg_new (ZKERNEL_REGISTER);
     if (!msg)
         goto fail;
-    msg->reply_to = self->mailbox_ifc;
+    msg->reply_to = self->actor_ifc;
     msg->io_object = (io_object_t *) listener;
-    mailbox_enqueue (&self->reactor, msg);
+    actor_send (&self->reactor, msg);
     return 0;
 
 fail:
@@ -158,7 +158,7 @@ socket_connect (socket_t *self, unsigned short port,
     assert (self);
 
     tcp_connector_t *connector =
-        tcp_connector_new (protocol_engine_constructor, &self->mailbox_ifc);
+        tcp_connector_new (protocol_engine_constructor, &self->actor_ifc);
     if (!connector)
         return -1;
     const int rc = tcp_connector_connect (connector, port);
@@ -177,9 +177,9 @@ socket_connect (socket_t *self, unsigned short port,
         tcp_connector_destroy (&connector);
         return -1;
     }
-    msg->reply_to = self->mailbox_ifc;
+    msg->reply_to = self->actor_ifc;
     msg->io_object = (io_object_t *) connector;
-    mailbox_enqueue (&self->reactor, msg);
+    actor_send (&self->reactor, msg);
     return 0;
 }
 
@@ -196,7 +196,7 @@ socket_send (socket_t *self, const char *data, size_t size)
         msg_t *msg = msg_new (ZKERNEL_ACTIVATE);
         assert (msg);
         msg->event_mask = ZKERNEL_POLLOUT;
-        mailbox_enqueue (&self->reactor, msg);
+        actor_send (&self->reactor, msg);
         self->active_sessions--;
         if (self->current_session < self->active_sessions) {
             self->sessions [self->current_session] =
@@ -294,9 +294,9 @@ s_new_session (socket_t *self, session_event_t *event)
             break;
         }
     msg_t *msg = msg_new (ZKERNEL_REGISTER);
-    msg->reply_to = self->mailbox_ifc;
+    msg->reply_to = self->actor_ifc;
     msg->io_object = (io_object_t *) session;
-    mailbox_enqueue (&self->reactor, msg);
+    actor_send (&self->reactor, msg);
 }
 
 static void

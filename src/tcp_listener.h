@@ -7,14 +7,14 @@
 #ifndef __TCP_LISTENER_H_INCLUDED__
 #define __TCP_LISTENER_H_INCLUDED__
 
-#include "mailbox.h"
+#include "actor.h"
 #include "protocol_engine.h"
 
 typedef struct tcp_listener tcp_listener_t;
 
 tcp_listener_t *
     tcp_listener_new (
-            protocol_engine_constructor_t *protocol_engine_constructor, struct mailbox *owner);
+            protocol_engine_constructor_t *protocol_engine_constructor, actor_t *owner);
 
 void
     tcp_listener_destroy (tcp_listener_t **self_p);

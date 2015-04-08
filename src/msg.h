@@ -7,13 +7,13 @@
 #ifndef __MSG_H_INCLUDED__
 #define __MSG_H_INCLUDED__
 
-#include "mailbox.h"
+#include "actor.h"
 
 struct io_object;
 
 struct msg_t {
     int msg_type;
-    mailbox_ifc_t reply_to;
+    actor_ifc_t reply_to;
     struct msg_t *next;
     struct io_object *io_object;
     int event_mask;

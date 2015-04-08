@@ -7,13 +7,13 @@
 #ifndef __TCP_SESSION_H_INCLUDED__
 #define __TCP_SESSION_H_INCLUDED__
 
-#include "mailbox.h"
+#include "actor.h"
 #include "protocol_engine.h"
 
 typedef struct tcp_session tcp_session_t;
 
 tcp_session_t *
-    tcp_session_new (int fd, protocol_engine_t *protocol_engine, mailbox_t *owner);
+    tcp_session_new (int fd, protocol_engine_t *protocol_engine, actor_t *owner);
 
 void
     tcp_session_destroy (tcp_session_t **self_p);

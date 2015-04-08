@@ -7,7 +7,7 @@
 #ifndef __REACTOR_H_INCLUDED__
 #define __REACTOR_H_INCLUDED__
 
-#include "mailbox.h"
+#include "actor.h"
 
 typedef struct reactor reactor_t;
 
@@ -17,8 +17,8 @@ reactor_t *
 void
     reactor_destroy (reactor_t **self_p);
 
-mailbox_t
-    reactor_mailbox ();
+actor_t
+    reactor_actor ();
 
 #endif
 

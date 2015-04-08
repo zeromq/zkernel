@@ -29,7 +29,7 @@ struct tcp_session {
     protocol_engine_info_t peinfo;
     iobuf_t *sendbuf;
     iobuf_t *recvbuf;
-    mailbox_t *owner;
+    actor_t *owner;
 };
 
 static int
@@ -57,7 +57,7 @@ static struct io_object_ops ops = {
 };
 
 tcp_session_t *
-tcp_session_new (int fd, protocol_engine_t *protocol_engine, mailbox_t *owner)
+tcp_session_new (int fd, protocol_engine_t *protocol_engine, actor_t *owner)
 {
     const size_t min_buffer_size = 64;
 
@@ -120,7 +120,7 @@ s_send_session_closed (tcp_session_t *self)
     session_closed_ev_t *ev = session_closed_ev_new ();
     assert (ev);
     ev->ptr = self;
-    mailbox_enqueue (self->owner, (msg_t *) ev);
+    actor_send (self->owner, (msg_t *) ev);
 }
 
 static int
@@ -162,7 +162,7 @@ io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interv
             if (pdu == NULL)
                 goto error;
             pdu->io_object = self_;
-            mailbox_enqueue (self->owner, (msg_t *) pdu);
+            actor_send (self->owner, (msg_t *) pdu);
         }
 
         while (self->queue_head && (peinfo->flags & ZKERNEL_ENCODER_READY) != 0) {

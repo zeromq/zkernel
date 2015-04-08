@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include "mailbox.h"
+#include "actor.h"
 #include "atomic.h"
 #include "reactor.h"
 #include "io_object.h"
@@ -137,13 +137,13 @@ reactor_destroy (reactor_t **self_p)
     }
 }
 
-mailbox_t
-reactor_mailbox (reactor_t *self)
+actor_t
+reactor_actor (reactor_t *self)
 {
     assert (self);
-    return (mailbox_t) {
+    return (actor_t) {
         .object = self,
-        .ftab.enqueue = s_send_msg
+        .ftab.send = s_send_msg
     };
 }
 
@@ -259,7 +259,7 @@ s_loop (void *udata)
                     struct event_source *ev_src =
                         s_register (self, io_object);
                     io_object->io_handle = ev_src;
-                    mailbox_enqueue (&msg->reply_to, msg);
+                    actor_send (&msg->reply_to, msg);
                 }
                 else
                 if (msg->msg_type == ZKERNEL_REMOVE) {
@@ -268,7 +268,7 @@ s_loop (void *udata)
                         (struct event_source *) io_object->io_handle;
                     assert (ev_src);
                     s_remove (self, ev_src);
-                    mailbox_enqueue (&msg->reply_to, msg);
+                    actor_send (&msg->reply_to, msg);
                 }
                 else
                 if (msg->msg_type == ZKERNEL_ACTIVATE) {

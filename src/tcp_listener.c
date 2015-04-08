@@ -11,7 +11,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "mailbox.h"
+#include "actor.h"
 #include "io_object.h"
 #include "tcp_listener.h"
 #include "tcp_session.h"
@@ -24,7 +24,7 @@ struct tcp_listener {
     io_object_t base;
     int fd;
     protocol_engine_constructor_t *protocol_engine_constructor;
-    mailbox_t *owner;
+    actor_t *owner;
 };
 
 static int
@@ -39,7 +39,7 @@ static struct io_object_ops ops = {
 };
 
 tcp_listener_t *
-tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, mailbox_t *owner)
+tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, actor_t *owner)
 {
     tcp_listener_t *self = malloc (sizeof *self);
     if (self)
@@ -153,7 +153,7 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             continue;
         }
         ev->session = session;
-        mailbox_enqueue (self->owner, (msg_t *) ev);
+        actor_send (self->owner, (msg_t *) ev);
     }
     return 1 | 2;
 }
