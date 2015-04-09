@@ -17,8 +17,8 @@ reactor_t *
 void
     reactor_destroy (reactor_t **self_p);
 
-actor_t
-    reactor_actor ();
+void
+    reactor_send (reactor_t *self, struct msg_t *msg);
 
 #endif
 

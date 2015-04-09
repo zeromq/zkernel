@@ -16,7 +16,6 @@
 #include "tcp_listener.h"
 #include "tcp_connector.h"
 #include "tcp_session.h"
-#include "actor.h"
 #include "io_object.h"
 #include "socket.h"
 #include "atomic.h"
@@ -27,7 +26,7 @@
 
 struct socket {
     int ctrl_fd;
-    struct actor reactor;
+    reactor_t *reactor;
     void *mbox;
     tcp_session_t *sessions [MAX_SESSIONS];
     size_t current_session;
@@ -67,7 +66,7 @@ socket_new (reactor_t *reactor)
     }
     *self = (socket_t) {
         .ctrl_fd = ctrl_fd,
-        .reactor = reactor_actor (reactor),
+        .reactor = reactor,
         .actor_ifc = {
             .object = self,
             .ftab = { .send = s_enqueue_msg }
@@ -142,7 +141,7 @@ socket_bind (socket_t *self, unsigned short port,
         goto fail;
     msg->reply_to = self->actor_ifc;
     msg->io_object = (io_object_t *) listener;
-    actor_send (&self->reactor, msg);
+    reactor_send (self->reactor, msg);
     return 0;
 
 fail:
@@ -179,7 +178,7 @@ socket_connect (socket_t *self, unsigned short port,
     }
     msg->reply_to = self->actor_ifc;
     msg->io_object = (io_object_t *) connector;
-    actor_send (&self->reactor, msg);
+    reactor_send (self->reactor, msg);
     return 0;
 }
 
@@ -196,7 +195,7 @@ socket_send (socket_t *self, const char *data, size_t size)
         msg_t *msg = msg_new (ZKERNEL_ACTIVATE);
         assert (msg);
         msg->event_mask = ZKERNEL_POLLOUT;
-        actor_send (&self->reactor, msg);
+        reactor_send (self->reactor, msg);
         self->active_sessions--;
         if (self->current_session < self->active_sessions) {
             self->sessions [self->current_session] =
@@ -296,7 +295,7 @@ s_new_session (socket_t *self, session_event_t *event)
     msg_t *msg = msg_new (ZKERNEL_REGISTER);
     msg->reply_to = self->actor_ifc;
     msg->io_object = (io_object_t *) session;
-    actor_send (&self->reactor, msg);
+    reactor_send (self->reactor, msg);
 }
 
 static void

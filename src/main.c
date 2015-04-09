@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "actor.h"
 #include "reactor.h"
 #include "socket.h"
 #include "msg.h"
@@ -18,8 +17,6 @@ int main()
     reactor_t *reactor = reactor_new ();
     assert (reactor);
 
-    actor_t mbox = reactor_actor (reactor);
-
     socket_t *socket = socket_new (reactor);
     assert (socket);
 
@@ -28,7 +25,7 @@ int main()
 
     for (int i = 0; i < 10; i++) {
         struct msg_t *msg = msg_new (0);
-        actor_send (&mbox, msg);
+        reactor_send (reactor, msg);
         printf ("press any key\n");
         getchar ();
     }

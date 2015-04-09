@@ -14,7 +14,6 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#include "actor.h"
 #include "atomic.h"
 #include "reactor.h"
 #include "io_object.h"
@@ -46,9 +45,6 @@ struct reactor {
 
 static void *
     s_loop (void *udata);
-
-static int
-    s_send_msg (void *self_, msg_t *msg);
 
 static struct event_source *
     s_register (reactor_t *self, io_object_t *io_object);
@@ -128,23 +124,13 @@ reactor_destroy (reactor_t **self_p)
         reactor_t *self = *self_p;
         kill_cmd_t *cmd = kill_cmd_new ();
         assert (cmd);
-        s_send_msg (self, (msg_t *) cmd);
+        reactor_send (self, (msg_t *) cmd);
         pthread_join (self->thread_handle, NULL);
         close (self->poll_fd);
         close (self->ctrl_fd);
         free (self);
         *self_p = NULL;
     }
-}
-
-actor_t
-reactor_actor (reactor_t *self)
-{
-    assert (self);
-    return (actor_t) {
-        .object = self,
-        .ftab.send = s_send_msg
-    };
 }
 
 static void *
@@ -340,10 +326,9 @@ s_activate (reactor_t *self, struct event_source *ev_src, int event_mask)
         self, ev_src, ev_src->fd, ev_src->event_mask | event_mask);
 }
 
-static int
-s_send_msg (void *self_, struct msg_t *msg)
+void
+reactor_send (reactor_t *self, struct msg_t *msg)
 {
-    reactor_t *self = (reactor_t *) self_;
     void *tail = atomic_ptr_get (&self->mbox);
     atomic_ptr_set ((void **) &msg->next, tail);
     void *prev = atomic_ptr_cas (&self->mbox, tail, msg);
@@ -358,7 +343,6 @@ s_send_msg (void *self_, struct msg_t *msg)
         const int rc = write (self->ctrl_fd, &v, sizeof v);
         assert (rc == sizeof v);
     }
-    return 0;
 }
 
 static void
