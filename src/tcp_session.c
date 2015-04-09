@@ -59,12 +59,9 @@ static struct io_object_ops ops = {
 tcp_session_t *
 tcp_session_new (int fd, protocol_engine_t *protocol_engine, actor_t *owner)
 {
-    const size_t min_buffer_size = 64;
-
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self) {
-        const size_t buffer_size =
-            min_buffer_size > 4096 ? min_buffer_size : 4096;
+        const size_t buffer_size = 4096;
         *self = (tcp_session_t) {
             .base.ops = ops,
             .fd = fd,
