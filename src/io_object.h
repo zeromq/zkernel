@@ -11,8 +11,6 @@
 
 #include "msg.h"
 
-struct io_object;
-
 typedef struct io_object io_object_t;
 
 struct io_object_ops {
