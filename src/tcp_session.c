@@ -36,9 +36,6 @@ static int
     io_init (io_object_t *self_, int *fd, uint32_t *timer_interval);
 
 static int
-    s_handshake (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
-
-static int
     io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
 
 static int
