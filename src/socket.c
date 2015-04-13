@@ -15,7 +15,7 @@
 #include "reactor.h"
 #include "tcp_listener.h"
 #include "tcp_connector.h"
-#include "tcp_session.h"
+#include "session.h"
 #include "io_object.h"
 #include "socket.h"
 #include "atomic.h"
@@ -28,7 +28,7 @@ struct socket {
     int ctrl_fd;
     reactor_t *reactor;
     void *mbox;
-    tcp_session_t *sessions [MAX_SESSIONS];
+    session_t *sessions [MAX_SESSIONS];
     size_t current_session;
     size_t active_sessions;
     struct actor actor_ifc;
@@ -287,7 +287,7 @@ s_new_session (socket_t *self, session_event_t *event)
 {
     printf ("new session: %p\n", event->session);
     assert (self->active_sessions < MAX_SESSIONS);
-    tcp_session_t *session = (tcp_session_t *) event->session;
+    session_t *session = (session_t *) event->session;
     for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
         if (self->sessions [i] == NULL) {
             self->sessions [i] = self->sessions [self->active_sessions];
@@ -325,7 +325,7 @@ s_ready_to_send (socket_t *self, ready_to_send_ev_t *ev)
         if (self->sessions [i] == ev->ptr) {
             self->sessions [i] = self->sessions [self->active_sessions];
             self->sessions [self->active_sessions++] =
-                (tcp_session_t *) ev->ptr;
+                (session_t *) ev->ptr;
             break;
         }
 }
