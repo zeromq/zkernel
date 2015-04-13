@@ -20,15 +20,6 @@ session_set_socket_id (session_t *self, const char *socket_id)
         return 0;
 }
 
-int
-session_write (session_t *self, const char *data, size_t size)
-{
-    assert (self);
-    assert (self->ops.write);
-
-    return self->ops.write (self, data, size);
-}
-
 void
 session_destroy (session_t **self_p)
 {
