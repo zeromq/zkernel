@@ -182,6 +182,7 @@ socket_connect (socket_t *self, unsigned short port,
     return 0;
 }
 
+/*
 int
 socket_send (socket_t *self, const char *data, size_t size)
 {
@@ -209,6 +210,7 @@ socket_send (socket_t *self, const char *data, size_t size)
         self->current_session = 0;
     return 0;
 }
+*/
 
 static void
 process_mbox (socket_t *self, msg_t *msg)

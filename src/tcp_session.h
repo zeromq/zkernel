@@ -17,11 +17,4 @@ tcp_session_t *
 
 void
     tcp_session_destroy (tcp_session_t **self_p);
-
-int
-    tcp_session_set_socket_id (tcp_session_t *self, const char *socket_id);
-
-int
-    tcp_session_send (tcp_session_t *self, const char *data, size_t size);
-
 #endif

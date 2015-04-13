@@ -15,13 +15,14 @@
 #include <sys/socket.h>
 
 #include "io_object.h"
+#include "session.h"
 #include "tcp_session.h"
 #include "msg.h"
 #include "zkernel.h"
 #include "protocol_engine.h"
 
 struct tcp_session {
-    io_object_t base;
+    session_t base;
     int fd;
     pdu_t *queue_head;
     pdu_t *queue_tail;
@@ -33,25 +34,14 @@ struct tcp_session {
 };
 
 static int
-    io_init (io_object_t *self_, int *fd, uint32_t *timer_interval);
-
-static int
-    io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
-
-static int
-    s_message (io_object_t *self_, msg_t *msg);
-
-static int
     s_input (tcp_session_t *self);
 
 static int
     s_output (tcp_session_t *self);
 
-static struct io_object_ops ops = {
-    .init  = io_init,
-    .event = io_event,
-    .message = s_message,
-};
+static struct io_object_ops io_ops;
+
+static struct session_ops session_ops;
 
 tcp_session_t *
 tcp_session_new (int fd, protocol_engine_t *protocol_engine, actor_t *owner)
@@ -60,7 +50,10 @@ tcp_session_new (int fd, protocol_engine_t *protocol_engine, actor_t *owner)
     if (self) {
         const size_t buffer_size = 4096;
         *self = (tcp_session_t) {
-            .base.ops = ops,
+            .base = (session_t) {
+                .base = (io_object_t) { .ops = io_ops },
+                .ops = session_ops,
+            },
             .fd = fd,
             .protocol_engine = protocol_engine,
             .sendbuf = iobuf_new (buffer_size),
@@ -118,7 +111,7 @@ s_send_session_closed (tcp_session_t *self)
 }
 
 static int
-io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
+s_io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
 {
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
@@ -134,7 +127,7 @@ io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
 }
 
 static int
-io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interval)
+s_io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_interval)
 {
     tcp_session_t *self = (tcp_session_t *) self_;
     protocol_engine_info_t *peinfo = &self->peinfo;
@@ -304,7 +297,7 @@ s_output (tcp_session_t *self)
 }
 
 static int
-s_message (io_object_t *self_, msg_t *msg)
+s_io_message (io_object_t *self_, msg_t *msg)
 {
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
@@ -325,17 +318,26 @@ s_message (io_object_t *self_, msg_t *msg)
     return ZKERNEL_POLLIN | ZKERNEL_POLLOUT;
 }
 
-int
-tcp_session_set_socket_id (tcp_session_t *self, const char *socket_id)
+static int
+s_session_set_socket_id (session_t *base, const char *socket_id)
 {
+    tcp_session_t *self = (tcp_session_t *) base;
     return protocol_engine_set_socket_id (self->protocol_engine, socket_id);
 }
 
-int
-tcp_session_send (tcp_session_t *self, const char *data, size_t size)
+static void
+s_session_destroy (session_t **self_p)
 {
-    const int rc = write (self->fd, data, size);
-    if (rc == -1)
-        return -1;
-    return 0;
+    tcp_session_destroy ((tcp_session_t **) self_p);
 }
+
+static struct io_object_ops io_ops = {
+    .init  = s_io_init,
+    .event = s_io_event,
+    .message = s_io_message,
+};
+
+static struct session_ops session_ops = {
+    .set_socket_id = s_session_set_socket_id,
+    .destroy = s_session_destroy,
+};

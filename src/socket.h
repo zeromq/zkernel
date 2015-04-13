@@ -23,8 +23,10 @@ int
 int
     socket_connect (socket_t *self, unsigned short port, protocol_engine_constructor_t *protocol_engine_constructor);
 
+/*
 int
     socket_send (socket_t *self, const char *data, size_t size);
+    */
 
 void
     socket_noop (socket_t *self);
