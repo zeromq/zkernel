@@ -18,14 +18,14 @@
 #include "session.h"
 #include "tcp_session.h"
 #include "msg.h"
+#include "msg_queue.h"
 #include "zkernel.h"
 #include "protocol_engine.h"
 
 struct tcp_session {
     session_t base;
     int fd;
-    pdu_t *queue_head;
-    pdu_t *queue_tail;
+    msg_queue_t *msg_queue;
     protocol_engine_t *protocol_engine;
     protocol_engine_info_t peinfo;
     iobuf_t *sendbuf;
@@ -55,12 +55,15 @@ tcp_session_new (int fd, protocol_engine_t *protocol_engine, actor_t *owner)
                 .ops = session_ops,
             },
             .fd = fd,
+            .msg_queue = msg_queue_new (),
             .protocol_engine = protocol_engine,
             .sendbuf = iobuf_new (buffer_size),
             .recvbuf = iobuf_new (buffer_size),
             .owner = owner
         };
         if (protocol_engine_init (protocol_engine, &self->peinfo) == -1)
+            goto error;
+        if (self->msg_queue == NULL)
             goto error;
         if (self->sendbuf == NULL || self->recvbuf == NULL)
             goto error;
@@ -69,6 +72,8 @@ tcp_session_new (int fd, protocol_engine_t *protocol_engine, actor_t *owner)
 
 error:
     close (self->fd);
+    if (self->msg_queue)
+        msg_queue_destroy (&self->msg_queue);
     if (self->protocol_engine)
         protocol_engine_destroy (&self->protocol_engine);
     if (self->sendbuf)
@@ -86,13 +91,8 @@ tcp_session_destroy (tcp_session_t **self_p)
     assert (self_p);
     if (*self_p) {
         tcp_session_t *self = *self_p;
-        msg_t *msg = (msg_t *) self->queue_head;
-        while (msg) {
-            msg_t *next = msg->next;
-            msg_destroy (&msg);
-            msg = next;
-        }
         close (self->fd);
+        msg_queue_destroy (&self->msg_queue);
         protocol_engine_destroy (&self->protocol_engine);
         iobuf_destroy (&self->sendbuf);
         iobuf_destroy (&self->recvbuf);
@@ -152,12 +152,9 @@ s_io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_inte
             actor_send (self->owner, (msg_t *) pdu);
         }
 
-        while (self->queue_head && (peinfo->flags & ZKERNEL_ENCODER_READY) != 0) {
-            pdu_t *pdu = self->queue_head;
-            self->queue_head = (pdu_t *) pdu->base.next;
-            if (self->queue_head == NULL)
-                self->queue_tail = NULL;
-            if (protocol_engine_encode (self->protocol_engine, pdu, peinfo) == -1)
+        while (!msg_queue_is_empty (self->msg_queue) && (peinfo->flags & ZKERNEL_ENCODER_READY) != 0) {
+            msg_t *msg = msg_queue_dequeue (self->msg_queue);
+            if (protocol_engine_encode (self->protocol_engine, (pdu_t *) msg, peinfo) == -1)
                 goto error;
         }
 
@@ -302,16 +299,8 @@ s_io_message (io_object_t *self_, msg_t *msg)
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
 
-    if (msg->msg_type == ZKERNEL_MSG_TYPE_PDU) {
-        pdu_t *pdu = (pdu_t *) msg;
-        if (self->queue_head == NULL)
-            self->queue_head = self->queue_tail = pdu;
-        else {
-            self->queue_tail->base.next = (msg_t *) pdu;
-            self->queue_tail = pdu;
-        }
-        pdu->base.next = NULL;
-    }
+    if (msg->msg_type == ZKERNEL_MSG_TYPE_PDU)
+        msg_queue_enqueue (self->msg_queue, msg);
     else
         msg_destroy (&msg);
 

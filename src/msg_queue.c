@@ -27,7 +27,7 @@ msg_queue_new ()
 }
 
 void
-msg_queue_enqeue (msg_queue_t *self, msg_t *msg)
+msg_queue_enqueue (msg_queue_t *self, msg_t *msg)
 {
     if (self->back == NULL)
         self->front = self->back = msg;
