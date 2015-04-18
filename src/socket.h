@@ -7,6 +7,8 @@
 #ifndef __SOCKET_H_INCLUDED__
 #define __SOCKET_H_INCLUDED__
 
+#include "msg.h"
+#include "reactor.h"
 #include "protocol_engine.h"
 
 typedef struct socket socket_t;
@@ -22,6 +24,9 @@ int
 
 int
     socket_connect (socket_t *self, unsigned short port, protocol_engine_constructor_t *protocol_engine_constructor);
+
+void
+    socket_send_msg (socket_t *self, msg_t *msg);
 
 /*
 int

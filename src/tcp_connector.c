@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include "actor.h"
+#include "socket.h"
 #include "io_object.h"
 #include "tcp_connector.h"
 #include "zkernel.h"
@@ -27,7 +27,7 @@ struct tcp_connector {
     int fd;
     protocol_engine_constructor_t *protocol_engine_constructor;
     int err;
-    actor_t *owner;
+    socket_t *owner;
 };
 
 static int
@@ -46,7 +46,7 @@ static struct io_object_ops ops = {
 };
 
 tcp_connector_t *
-tcp_connector_new (protocol_engine_constructor_t *protocol_engine_constructor, actor_t *owner)
+tcp_connector_new (protocol_engine_constructor_t *protocol_engine_constructor, socket_t *owner)
 {
     tcp_connector_t *self = malloc (sizeof *self);
     if (self)

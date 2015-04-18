@@ -11,20 +11,20 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "actor.h"
 #include "io_object.h"
 #include "tcp_listener.h"
 #include "tcp_session.h"
 #include "msg.h"
 #include <arpa/inet.h>
 #include <errno.h>
+#include "socket.h"
 #include "zkernel.h"
 
 struct tcp_listener {
     io_object_t base;
     int fd;
     protocol_engine_constructor_t *protocol_engine_constructor;
-    actor_t *owner;
+    socket_t *owner;
 };
 
 static int
@@ -39,7 +39,7 @@ static struct io_object_ops ops = {
 };
 
 tcp_listener_t *
-tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, actor_t *owner)
+tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, socket_t *owner)
 {
     tcp_listener_t *self = malloc (sizeof *self);
     if (self)
@@ -153,7 +153,7 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             continue;
         }
         ev->session = session;
-        actor_send (self->owner, (msg_t *) ev);
+        socket_send_msg (self->owner, (msg_t *) ev);
     }
     return 1 | 2;
 }

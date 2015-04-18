@@ -7,13 +7,13 @@
 #ifndef __TCP_CONNECTOR_H_INCLUDED__
 #define __TCP_CONNECTOR_H_INCLUDED__
 
-#include "actor.h"
+#include "socket.h"
 #include "protocol_engine.h"
 
 typedef struct tcp_connector tcp_connector_t;
 
 tcp_connector_t *
-    tcp_connector_new (protocol_engine_constructor_t *protocol_engine_constructor, actor_t *owner);
+    tcp_connector_new (protocol_engine_constructor_t *protocol_engine_constructor, socket_t *owner);
 
 void
     tcp_connector_destroy (tcp_connector_t **self_p);

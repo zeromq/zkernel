@@ -19,6 +19,7 @@
 #include "tcp_session.h"
 #include "msg.h"
 #include "msg_queue.h"
+#include "socket.h"
 #include "zkernel.h"
 #include "protocol_engine.h"
 
@@ -30,7 +31,7 @@ struct tcp_session {
     protocol_engine_info_t peinfo;
     iobuf_t *sendbuf;
     iobuf_t *recvbuf;
-    actor_t *owner;
+    socket_t *owner;
 };
 
 static int
@@ -44,7 +45,7 @@ static struct io_object_ops io_ops;
 static struct session_ops session_ops;
 
 tcp_session_t *
-tcp_session_new (int fd, protocol_engine_t *protocol_engine, actor_t *owner)
+tcp_session_new (int fd, protocol_engine_t *protocol_engine, socket_t *owner)
 {
     tcp_session_t *self = (tcp_session_t *) malloc (sizeof *self);
     if (self) {
@@ -107,7 +108,7 @@ s_send_session_closed (tcp_session_t *self)
     session_closed_ev_t *ev = session_closed_ev_new ();
     assert (ev);
     ev->ptr = self;
-    actor_send (self->owner, (msg_t *) ev);
+    socket_send_msg (self->owner, (msg_t *) ev);
 }
 
 static int
@@ -149,7 +150,7 @@ s_io_event (io_object_t *self_, uint32_t io_flags, int *fd, uint32_t *timer_inte
             if (pdu == NULL)
                 goto error;
             pdu->io_object = self_;
-            actor_send (self->owner, (msg_t *) pdu);
+            socket_send_msg (self->owner, (msg_t *) pdu);
         }
 
         while (!msg_queue_is_empty (self->msg_queue) && (peinfo->flags & ZKERNEL_ENCODER_READY) != 0) {
