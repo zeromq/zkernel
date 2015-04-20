@@ -16,6 +16,9 @@
 #include "dispatcher.h"
 #include "zkernel.h"
 
+struct proxy;
+void proxy_message (struct proxy *proxy, msg_t *msg);
+
 struct dispatcher {
     int ctrl_fd;
     void *mbox;
@@ -117,6 +120,9 @@ s_loop (void *udata)
                 stop = true;
                 msg_destroy (&msg);
             }
+            else
+            if (msg->proxy)
+                proxy_message (msg->proxy, msg);
             else
                 msg_destroy (&msg);
             msg = next_msg;
