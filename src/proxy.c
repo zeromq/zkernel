@@ -17,7 +17,11 @@ struct proxy {
     actor_t *socket;
     dispatcher_t *dispatcher;
     reactor_t *reactor;
+    struct actor actor_ifc;
 };
+
+static int
+    s_enqueue_msg (void *self_, struct msg_t *msg);
 
 proxy_t *
 proxy_new (actor_t *socket, dispatcher_t *dispatcher, reactor_t *reactor)
@@ -28,6 +32,10 @@ proxy_new (actor_t *socket, dispatcher_t *dispatcher, reactor_t *reactor)
             .socket = socket,
             .dispatcher = dispatcher,
             .reactor = reactor,
+            .actor_ifc = {
+                .object = self,
+                .ftab = { .send = s_enqueue_msg },
+            },
         };
     }
 
@@ -43,6 +51,14 @@ proxy_destroy (proxy_t **self_p)
         free (self);
         *self_p = NULL;
     }
+}
+
+int
+s_enqueue_msg (void *self_, msg_t *msg)
+{
+    proxy_t *self = (proxy_t *) self_;
+    msg->proxy = self;
+    dispatcher_send (((proxy_t *) self)->dispatcher, msg);
 }
 
 void
