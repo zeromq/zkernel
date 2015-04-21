@@ -13,8 +13,10 @@
 
 typedef struct socket socket_t;
 
+struct dispatcher;
+
 socket_t *
-    socket_new (reactor_t *reactor);
+    socket_new (struct dispatcher *dispatcher, reactor_t *reactor);
 
 void
     socket_destroy (socket_t **self_p);

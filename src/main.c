@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "dispatcher.h"
 #include "reactor.h"
 #include "socket.h"
 #include "msg.h"
@@ -17,7 +18,10 @@ int main()
     reactor_t *reactor = reactor_new ();
     assert (reactor);
 
-    socket_t *socket = socket_new (reactor);
+    dispatcher_t *dispatcher = dispatcher_new ();
+    assert (dispatcher);
+
+    socket_t *socket = socket_new (dispatcher, reactor);
     assert (socket);
 
     // const int rc = socket_bind (socket, 2226);

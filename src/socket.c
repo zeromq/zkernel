@@ -12,7 +12,9 @@
 #include <assert.h>
 #include <errno.h>
 
+#include "dispatcher.h"
 #include "reactor.h"
+#include "proxy.h"
 #include "tcp_listener.h"
 #include "tcp_connector.h"
 #include "session.h"
@@ -27,6 +29,7 @@
 struct socket {
     int ctrl_fd;
     reactor_t *reactor;
+    proxy_t *proxy;
     void *mbox;
     session_t *sessions [MAX_SESSIONS];
     size_t current_session;
@@ -53,7 +56,7 @@ static void
     s_ready_to_send (socket_t *self, ready_to_send_ev_t *ev);
 
 socket_t *
-socket_new (reactor_t *reactor)
+socket_new (dispatcher_t *dispatcher, reactor_t *reactor)
 {
     socket_t *self = malloc (sizeof *self);
     if (!self)
@@ -72,6 +75,12 @@ socket_new (reactor_t *reactor)
             .ftab = { .send = s_enqueue_msg }
         }
     };
+    self->proxy = proxy_new (&self->actor_ifc, dispatcher, reactor);
+    if (self->proxy == NULL) {
+        close (self->ctrl_fd);
+        free (self);
+        self = NULL;
+    }
     return self;
 }
 
@@ -82,6 +91,7 @@ socket_destroy (socket_t **self_p)
     if (*self_p) {
         socket_t *self = *self_p;
         close (self->ctrl_fd);
+        proxy_destroy (&self->proxy);
         free (self);
         *self_p = NULL;
     }
