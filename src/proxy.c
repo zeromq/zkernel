@@ -74,23 +74,29 @@ proxy_message (proxy_t *self, msg_t *msg)
     assert (self);
 
     switch (msg->msg_type) {
+    case ZKERNEL_SESSION:
+        break;
     case ZKERNEL_LISTENER:
+        break;
+    case ZKERNEL_CONNECTOR:
+        break;
+    case ZKERNEL_SESSION_DONE:
+        break;
+    case ZKERNEL_SESSION_ERROR:
+        break;
+    case ZKERNEL_SESSION_TERMINATED:
+        break;
+    case ZKERNEL_LISTENER_DONE:
         break;
     case ZKERNEL_LISTENER_ERROR:
         break;
     case ZKERNEL_LISTENER_TERMINATED:
         break;
-    case ZKERNEL_CONNECTOR:
+    case ZKERNEL_CONNECTOR_DONE:
         break;
     case ZKERNEL_CONNECTOR_ERROR:
         break;
     case ZKERNEL_CONNECTOR_TERMINATED:
-        break;
-    case ZKERNEL_SESSION:
-        break;
-    case ZKERNEL_SESSION_ERROR:
-        break;
-    case ZKERNEL_SESSION_TERMINATED:
         break;
     default:
         break;
