@@ -17,6 +17,7 @@
 #include "zkernel.h"
 
 struct io_data {
+    bool is_session;
     void *io_object;
     bool terminating;
 };
@@ -83,7 +84,10 @@ s_session (proxy_t *self, msg_t *msg)
 
     struct io_data *data = (struct io_data *) malloc (sizeof *data);
     if (data) {
-        *data = (struct io_data) { .io_object = (io_object_t *) session };
+        *data = (struct io_data) {
+            .is_session = true,
+            .io_object = (io_object_t *) session
+        };
 
         *msg = (msg_t) {
             .msg_type = ZKERNEL_START,
@@ -99,7 +103,9 @@ static void
 s_start_ack (proxy_t *self, msg_t *msg)
 {
     struct io_data *io_data = msg->u.start_ack.handle;
-    // If underlying io_object is session, inform socket
+    if (io_data->is_session) {
+        // notify socket about new session
+    }
 }
 
 void
