@@ -6,13 +6,20 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "msg.h"
 #include "actor.h"
 #include "dispatcher.h"
 #include "reactor.h"
 #include "proxy.h"
+#include "session.h"
 #include "zkernel.h"
+
+struct io_data {
+    void *io_handle;
+    bool terminating;
+};
 
 struct proxy {
     actor_t *socket;
@@ -68,6 +75,36 @@ proxy_send (proxy_t *self, msg_t *msg)
     dispatcher_send (self->dispatcher, msg);
 }
 
+static void
+s_session (proxy_t *self, msg_t *msg)
+{
+    session_t *session = msg->u.session.session;
+    assert (session);
+
+    struct io_data *data = (struct io_data *) malloc (sizeof *data);
+    if (data) {
+        *data = (struct io_data) { .io_handle = NULL };
+
+        *msg = (msg_t) {
+            .msg_type = ZKERNEL_START,
+            .u.start = { .handle = data },
+        };
+        reactor_send (self->reactor, msg);
+    }
+    else
+        session_destroy (&session);
+}
+
+static void
+s_start_ack (proxy_t *self, msg_t *msg)
+{
+    void *io_handle = msg->u.start_ack.io_handle;
+    struct io_data *io_data = msg->u.start_ack.handle;
+
+    assert (io_data->io_handle == NULL);
+    io_data->io_handle = io_handle;
+}
+
 void
 proxy_message (proxy_t *self, msg_t *msg)
 {
@@ -75,28 +112,20 @@ proxy_message (proxy_t *self, msg_t *msg)
 
     switch (msg->msg_type) {
     case ZKERNEL_SESSION:
+        s_session (self, msg);
         break;
     case ZKERNEL_LISTENER:
         break;
     case ZKERNEL_CONNECTOR:
         break;
-    case ZKERNEL_SESSION_DONE:
+    case ZKERNEL_START_ACK:
+        s_start_ack (self, msg);
         break;
-    case ZKERNEL_SESSION_ERROR:
+    case ZKERNEL_STOP_ACK:
         break;
-    case ZKERNEL_SESSION_TERMINATED:
+    case ZKERNEL_IO_DONE:
         break;
-    case ZKERNEL_LISTENER_DONE:
-        break;
-    case ZKERNEL_LISTENER_ERROR:
-        break;
-    case ZKERNEL_LISTENER_TERMINATED:
-        break;
-    case ZKERNEL_CONNECTOR_DONE:
-        break;
-    case ZKERNEL_CONNECTOR_ERROR:
-        break;
-    case ZKERNEL_CONNECTOR_TERMINATED:
+    case ZKERNEL_IO_ERROR:
         break;
     default:
         break;

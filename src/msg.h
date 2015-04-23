@@ -19,6 +19,20 @@ struct msg_t {
     struct io_object *io_object;
     struct proxy *proxy;
     int event_mask;
+    union {
+        struct {
+            struct session *session;
+        } session;
+
+        struct {
+            void *handle;
+        } start;
+
+        struct {
+            void *handle;
+            void *io_handle;
+        } start_ack;
+    } u;
 };
 
 typedef struct msg_t msg_t;

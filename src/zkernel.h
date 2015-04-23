@@ -20,25 +20,21 @@
 #define ZKERNEL_SESSION_CLOSED  17
 #define ZKERNEL_READY_TO_SEND   18
 
-#define ZKERNEL_SESSION                 1
-#define ZKERNEL_SESSION_DONE            2
-#define ZKERNEL_SESSION_ERROR           3
-#define ZKERNEL_SESSION_TERMINATED      4
-#define ZKERNEL_LISTENER                5
-#define ZKERNEL_LISTENER_DONE           6
-#define ZKERNEL_LISTENER_ERROR          7
-#define ZKERNEL_LISTENER_TERMINATED     8
-#define ZKERNEL_CONNECTOR               9
-#define ZKERNEL_CONNECTOR_DONE          10
-#define ZKERNEL_CONNECTOR_ERROR         11
-#define ZKERNEL_CONNECTOR_TERMINATED    12
+#define ZKERNEL_SESSION         1
+#define ZKERNEL_LISTENER        2
+#define ZKERNEL_CONNECTOR       3
+#define ZKERNEL_START           4
+#define ZKERNEL_START_ACK       5
+#define ZKERNEL_STOP            6
+#define ZKERNEL_STOP_ACK        7
+#define ZKERNEL_IO_DONE         8
+#define ZKERNEL_IO_ERROR        9
 
 //  Frame ID
 #define ZKERNEL_MSG_TYPE_PDU    32
 
 #define ZKERNEL_INPUT_READY     0x01
 #define ZKERNEL_OUTPUT_READY    0x02
-#define ZKERNEL_IO_ERROR        0x04
 
 #define ZKERNEL_ENCODER_READY   0x01
 #define ZKERNEL_READ_OK         0x02
