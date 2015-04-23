@@ -30,7 +30,6 @@ struct msg_t {
 
         struct {
             void *handle;
-            void *io_handle;
         } start_ack;
     } u;
 };
