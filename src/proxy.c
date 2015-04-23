@@ -104,7 +104,11 @@ s_start_ack (proxy_t *self, msg_t *msg)
 {
     struct io_data *io_data = msg->u.start_ack.handle;
     if (io_data->is_session) {
-        // notify socket about new session
+        *msg = (msg_t) {
+            .msg_type = ZKERNEL_SESSION,
+            .u.session = (session_t *) io_data->io_object,
+        };
+        actor_send (self->socket, msg);
     }
 }
 
