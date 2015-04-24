@@ -39,15 +39,6 @@ kill_cmd_new ()
     return cmd;
 }
 
-session_event_t *
-session_event_new ()
-{
-    session_event_t *ev = (session_event_t *) malloc (sizeof *ev);
-    if (ev != NULL)
-        *ev = (session_event_t) { .base.msg_type = ZKERNEL_NEW_SESSION };
-    return ev;
-}
-
 session_closed_ev_t *
 session_closed_ev_new ()
 {

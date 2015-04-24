@@ -62,16 +62,6 @@ typedef struct kill_cmd kill_cmd_t;
 kill_cmd_t *
     kill_cmd_new ();
 
-struct session_event {
-    struct msg_t base;
-    void *session;
-};
-
-typedef struct session_event session_event_t;
-
-session_event_t *
-    session_event_new ();
-
 struct session_closed_ev {
     struct msg_t base;
     void *ptr;

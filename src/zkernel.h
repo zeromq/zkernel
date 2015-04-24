@@ -16,7 +16,6 @@
 #define ZKERNEL_ACTIVATE        4
 
 //  Event ids
-#define ZKERNEL_NEW_SESSION     16
 #define ZKERNEL_SESSION_CLOSED  17
 #define ZKERNEL_READY_TO_SEND   18
 
