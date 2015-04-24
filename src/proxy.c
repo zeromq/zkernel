@@ -21,6 +21,8 @@ struct proxy {
     dispatcher_t *dispatcher;
     reactor_t *reactor;
     struct actor actor_ifc;
+    unsigned int in_flight;
+    unsigned long sessions;
 };
 
 static int
@@ -84,6 +86,7 @@ s_session (proxy_t *self, msg_t *msg)
         },
     };
 
+    self->in_flight++;
     reactor_send (self->reactor, msg);
 }
 
@@ -97,6 +100,9 @@ s_start_ack (proxy_t *self, msg_t *msg)
         .u.session = { .session = (session_t *) io_object },
     };
 
+    self->in_flight--;
+    self->sessions++;
+
     actor_send (self->socket, msg);
 }
 
@@ -106,6 +112,7 @@ s_start_nak (proxy_t *self, msg_t *msg)
     session_t *session = (session_t *) msg->u.start_nak.io_object;
     session_destroy (&session);
     msg_destroy (&msg);
+    self->in_flight--;
 }
 
 void
