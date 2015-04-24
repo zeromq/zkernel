@@ -13,10 +13,12 @@
 #include <sys/socket.h>
 #include "io_object.h"
 #include "tcp_listener.h"
+#include "session.h"
 #include "tcp_session.h"
 #include "msg.h"
 #include <arpa/inet.h>
 #include <errno.h>
+#include "proxy.h"
 #include "socket.h"
 #include "zkernel.h"
 
@@ -25,6 +27,7 @@ struct tcp_listener {
     int fd;
     protocol_engine_constructor_t *protocol_engine_constructor;
     socket_t *owner;
+    proxy_t *proxy;
 };
 
 static int
@@ -39,7 +42,7 @@ static struct io_object_ops ops = {
 };
 
 tcp_listener_t *
-tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, socket_t *owner)
+tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, socket_t *owner, proxy_t *proxy)
 {
     tcp_listener_t *self = malloc (sizeof *self);
     if (self)
@@ -47,7 +50,8 @@ tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, so
             .base.ops = ops,
             .fd = -1,
             .protocol_engine_constructor = protocol_engine_constructor,
-            .owner = owner
+            .owner = owner,
+            .proxy = proxy,
         };
     return self;
 }
@@ -147,13 +151,13 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             close (rc);
             continue;
         }
-        session_event_t *ev = session_event_new ();
-        if (ev == NULL) {
+        msg_t *msg = msg_new (ZKERNEL_SESSION);
+        if (msg == NULL)
             tcp_session_destroy (&session);
-            continue;
+        else {
+            msg->u.session.session = (session_t *) session;
+            proxy_send (self->proxy, msg);
         }
-        ev->session = session;
-        socket_send_msg (self->owner, (msg_t *) ev);
     }
     return 1 | 2;
 }

@@ -7,6 +7,7 @@
 #ifndef __PROXY_H_INCLUDED__
 #define __PROXY_H_INCLUDED__
 
+#include "msg.h"
 #include "actor.h"
 #include "dispatcher.h"
 #include "reactor.h"
@@ -15,6 +16,9 @@ typedef struct proxy proxy_t;
 
 proxy_t *
     proxy_new (actor_t *socket, dispatcher_t *dispatcher, reactor_t *reactor);
+
+void
+    proxy_send (proxy_t *self, msg_t *msg);
 
 void
     proxy_destroy (proxy_t **self_p);

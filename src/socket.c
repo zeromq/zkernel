@@ -140,7 +140,7 @@ socket_bind (socket_t *self, unsigned short port,
         protocol_engine_constructor_t *protocol_engine_constructor)
 {
     tcp_listener_t *listener =
-        tcp_listener_new (protocol_engine_constructor, self);
+        tcp_listener_new (protocol_engine_constructor, self, self->proxy);
     if (!listener)
         goto fail;
     int rc = tcp_listener_bind (listener, port);
