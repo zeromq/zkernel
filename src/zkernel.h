@@ -21,14 +21,9 @@
 #define ZKERNEL_READY_TO_SEND   18
 
 #define ZKERNEL_SESSION         1
-#define ZKERNEL_LISTENER        2
-#define ZKERNEL_CONNECTOR       3
-#define ZKERNEL_START           4
-#define ZKERNEL_START_ACK       5
-#define ZKERNEL_STOP            6
-#define ZKERNEL_STOP_ACK        7
-#define ZKERNEL_IO_DONE         8
-#define ZKERNEL_IO_ERROR        9
+#define ZKERNEL_START           2
+#define ZKERNEL_START_ACK       3
+#define ZKERNEL_START_NAK       4
 
 //  Frame ID
 #define ZKERNEL_MSG_TYPE_PDU    32

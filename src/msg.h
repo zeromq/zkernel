@@ -25,12 +25,17 @@ struct msg_t {
         } session;
 
         struct {
-            void *handle;
+            struct io_object *io_object;
+            actor_t reply_to;
         } start;
 
         struct {
-            void *handle;
+            struct io_object *io_object;
         } start_ack;
+
+        struct {
+            struct io_object *io_object;
+        } start_nak;
     } u;
 };
 

@@ -16,12 +16,6 @@
 #include "session.h"
 #include "zkernel.h"
 
-struct io_data {
-    bool is_session;
-    void *io_object;
-    bool terminating;
-};
-
 struct proxy {
     actor_t *socket;
     dispatcher_t *dispatcher;
@@ -82,34 +76,36 @@ s_session (proxy_t *self, msg_t *msg)
     session_t *session = msg->u.session.session;
     assert (session);
 
-    struct io_data *data = (struct io_data *) malloc (sizeof *data);
-    if (data) {
-        *data = (struct io_data) {
-            .is_session = true,
-            .io_object = (io_object_t *) session
-        };
+    *msg = (msg_t) {
+        .msg_type = ZKERNEL_START,
+        .u.start = {
+            .io_object = (io_object_t *) session,
+            .reply_to = self->actor_ifc,
+        },
+    };
 
-        *msg = (msg_t) {
-            .msg_type = ZKERNEL_START,
-            .u.start = { .handle = data },
-        };
-        reactor_send (self->reactor, msg);
-    }
-    else
-        session_destroy (&session);
+    reactor_send (self->reactor, msg);
 }
 
 static void
 s_start_ack (proxy_t *self, msg_t *msg)
 {
-    struct io_data *io_data = msg->u.start_ack.handle;
-    if (io_data->is_session) {
-        *msg = (msg_t) {
-            .msg_type = ZKERNEL_SESSION,
-            .u.session = (session_t *) io_data->io_object,
-        };
-        actor_send (self->socket, msg);
-    }
+    io_object_t *io_object = msg->u.start_ack.io_object;
+
+    *msg = (msg_t) {
+        .msg_type = ZKERNEL_SESSION,
+        .u.session = { .session = (session_t *) io_object },
+    };
+
+    actor_send (self->socket, msg);
+}
+
+static void
+s_start_nak (proxy_t *self, msg_t *msg)
+{
+    session_t *session = (session_t *) msg->u.start_nak.io_object;
+    session_destroy (&session);
+    msg_destroy (&msg);
 }
 
 void
@@ -121,21 +117,13 @@ proxy_message (proxy_t *self, msg_t *msg)
     case ZKERNEL_SESSION:
         s_session (self, msg);
         break;
-    case ZKERNEL_LISTENER:
-        break;
-    case ZKERNEL_CONNECTOR:
-        break;
     case ZKERNEL_START_ACK:
         s_start_ack (self, msg);
         break;
-    case ZKERNEL_STOP_ACK:
-        break;
-    case ZKERNEL_IO_DONE:
-        break;
-    case ZKERNEL_IO_ERROR:
+    case ZKERNEL_START_NAK:
+        s_start_nak (self, msg);
         break;
     default:
         break;
     }
-    msg_destroy (&msg);
 }
