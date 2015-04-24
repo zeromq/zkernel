@@ -47,7 +47,7 @@ static void
     process_mbox (socket_t *self, msg_t *msg);
 
 static void
-    s_new_session (socket_t *self, session_event_t *event);
+    s_session (socket_t *self, msg_t *msg);
 
 static void
     s_session_closed (socket_t *self, session_closed_ev_t *ev);
@@ -116,8 +116,8 @@ process_msg (socket_t *self, msg_t **msg_p)
     case ZKERNEL_REMOVE:
         msg_destroy (&msg);
         break;
-    case ZKERNEL_NEW_SESSION:
-        s_new_session (self, (session_event_t *) msg);
+    case ZKERNEL_SESSION:
+        s_session (self, msg);
         msg_destroy (&msg);
         break;
     case ZKERNEL_SESSION_CLOSED:
@@ -300,21 +300,17 @@ s_wait_for_msgs (socket_t *self)
 }
 
 static void
-s_new_session (socket_t *self, session_event_t *event)
+s_session (socket_t *self, msg_t *msg)
 {
-    printf ("new session: %p\n", event->session);
+    printf ("new session: %p\n", msg->u.session.session);
     assert (self->active_sessions < MAX_SESSIONS);
-    session_t *session = (session_t *) event->session;
+    session_t *session = msg->u.session.session;
     for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
         if (self->sessions [i] == NULL) {
             self->sessions [i] = self->sessions [self->active_sessions];
             self->sessions [self->active_sessions++] = session;
             break;
         }
-    msg_t *msg = msg_new (ZKERNEL_REGISTER);
-    msg->reply_to = self->actor_ifc;
-    msg->io_object = (io_object_t *) session;
-    reactor_send (self->reactor, msg);
 }
 
 static void
