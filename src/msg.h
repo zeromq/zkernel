@@ -36,6 +36,12 @@ struct msg_t {
         struct {
             struct io_object *io_object;
         } start_nak;
+
+        struct {
+        } stop_proxy;
+
+        struct {
+        } proxy_stopped;
     } u;
 };
 

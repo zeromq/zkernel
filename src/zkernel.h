@@ -24,6 +24,8 @@
 #define ZKERNEL_START           2
 #define ZKERNEL_START_ACK       3
 #define ZKERNEL_START_NAK       4
+#define ZKERNEL_STOP_PROXY      5
+#define ZKERNEL_PROXY_STOPPED   6
 
 //  Frame ID
 #define ZKERNEL_MSG_TYPE_PDU    32

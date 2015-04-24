@@ -21,8 +21,9 @@ struct proxy {
     dispatcher_t *dispatcher;
     reactor_t *reactor;
     struct actor actor_ifc;
-    unsigned int in_flight;
-    unsigned long sessions;
+    unsigned int msgs_in_flight;
+    bool stopped;
+    msg_t *stop_msg;
 };
 
 static int
@@ -78,16 +79,18 @@ s_session (proxy_t *self, msg_t *msg)
     session_t *session = msg->u.session.session;
     assert (session);
 
-    *msg = (msg_t) {
-        .msg_type = ZKERNEL_START,
-        .u.start = {
-            .io_object = (io_object_t *) session,
-            .reply_to = self->actor_ifc,
-        },
-    };
+    if (self->stopped) {
+        session_destroy (&session);
+        msg_destroy (&msg);
+    }
+    else {
+        msg->msg_type = ZKERNEL_START;
+        msg->u.start.io_object = (io_object_t *) session;
+        msg->u.start.reply_to = self->actor_ifc;
 
-    self->in_flight++;
-    reactor_send (self->reactor, msg);
+        reactor_send (self->reactor, msg);
+        self->msgs_in_flight++;
+    }
 }
 
 static void
@@ -100,10 +103,13 @@ s_start_ack (proxy_t *self, msg_t *msg)
         .u.session = { .session = (session_t *) io_object },
     };
 
-    self->in_flight--;
-    self->sessions++;
-
+    self->msgs_in_flight--;
     actor_send (self->socket, msg);
+
+    if (self->stopped && self->msgs_in_flight == 0) {
+        assert (self->stop_msg);
+        actor_send (self->socket, self->stop_msg);
+    }
 }
 
 static void
@@ -112,7 +118,27 @@ s_start_nak (proxy_t *self, msg_t *msg)
     session_t *session = (session_t *) msg->u.start_nak.io_object;
     session_destroy (&session);
     msg_destroy (&msg);
-    self->in_flight--;
+    self->msgs_in_flight--;
+
+    if (self->stopped && self->msgs_in_flight == 0) {
+        assert (self->stop_msg);
+        actor_send (self->socket, self->stop_msg);
+    }
+}
+
+static void
+s_stop (proxy_t *self, msg_t *msg)
+{
+    assert (!self->stopped);
+
+    msg->msg_type = ZKERNEL_PROXY_STOPPED;
+
+    if (self->msgs_in_flight == 0)
+        actor_send (self->socket, msg);
+    else
+        self->stop_msg = msg;
+
+    self->stopped = true;
 }
 
 void
@@ -129,6 +155,9 @@ proxy_message (proxy_t *self, msg_t *msg)
         break;
     case ZKERNEL_START_NAK:
         s_start_nak (self, msg);
+        break;
+    case ZKERNEL_STOP_PROXY:
+        s_stop (self, msg);
         break;
     default:
         break;
