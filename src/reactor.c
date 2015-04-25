@@ -46,8 +46,8 @@ struct reactor {
 static void *
     s_loop (void *udata);
 
-static struct event_source *
-    s_register (reactor_t *self, io_object_t *io_object);
+static void
+    s_start_io (reactor_t *self, msg_t *msg);
 
 static void
     s_remove (reactor_t *self, struct event_source *ev_src);
@@ -240,12 +240,10 @@ s_loop (void *udata)
                     stop = 1;
                 }
                 else
-                if (msg->msg_type == ZKERNEL_REGISTER) {
-                    io_object_t *io_object = (io_object_t *) msg->io_object;
-                    struct event_source *ev_src =
-                        s_register (self, io_object);
-                    io_object->io_handle = ev_src;
-                    actor_send (&msg->reply_to, msg);
+                if (msg->msg_type == ZKERNEL_START_IO) {
+                    actor_t reply_to = msg->u.start_io.reply_to;
+                    s_start_io (self, msg);
+                    actor_send (&reply_to, msg);
                 }
                 else
                 if (msg->msg_type == ZKERNEL_REMOVE) {
@@ -274,19 +272,30 @@ s_loop (void *udata)
     return NULL;
 }
 
-static struct event_source *
-s_register (reactor_t *self, io_object_t *io_object)
+static void
+s_start_io (reactor_t *self, msg_t *msg)
 {
     assert (self);
 
+    io_object_t *io_object = msg->u.start_io.io_object;
+
     struct event_source *ev_src = malloc (sizeof *ev_src);
-    if (!ev_src)
-        return NULL;
-    *ev_src = (struct event_source) { .fd = -1, .io_object = io_object };
+    io_object->io_handle = ev_src;
+
+    if (ev_src == NULL)
+        goto error;
+
+    *ev_src = (struct event_source) {
+        .fd = -1,
+        .io_object = io_object
+    };
 
     int fd = -1;
     uint32_t timer_interval = 0;
     const int rc = io_object_init (io_object, &fd, &timer_interval);
+    if (fd == -1)
+        goto error;
+
     s_update_event_source (self, ev_src, fd, rc);
     if (timer_interval > 0) {
         struct timer *timer = s_alloc_timer (self);
@@ -296,7 +305,16 @@ s_register (reactor_t *self, io_object_t *io_object)
         ev_src->timer = timer->t;
     }
 
-    return ev_src;
+    msg->msg_type = ZKERNEL_START_IO_ACK;
+    msg->u.start_io_ack.io_object = io_object;
+
+    return;
+
+error:
+    if (ev_src)
+        free (ev_src);
+    msg->msg_type = ZKERNEL_START_IO_NAK;
+    msg->u.start_io_nak.io_object = io_object;
 }
 
 static void
