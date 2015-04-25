@@ -27,15 +27,15 @@ struct msg_t {
         struct {
             struct io_object *io_object;
             actor_t reply_to;
-        } start;
+        } start_io;
 
         struct {
             struct io_object *io_object;
-        } start_ack;
+        } start_io_ack;
 
         struct {
             struct io_object *io_object;
-        } start_nak;
+        } start_io_nak;
 
         struct {
         } stop_proxy;
