@@ -98,15 +98,7 @@ s_session (proxy_t *self, msg_t *msg)
 static void
 s_start_ack (proxy_t *self, msg_t *msg)
 {
-    io_object_t *io_object = msg->u.start_io_ack.io_object;
-
-    *msg = (msg_t) {
-        .msg_type = ZKERNEL_SESSION,
-        .u.session = { .session = (session_t *) io_object },
-    };
-
     self->msgs_in_flight--;
-    actor_send (self->socket, msg);
 
     if (self->stopped && self->msgs_in_flight == 0) {
         assert (self->stop_msg);
