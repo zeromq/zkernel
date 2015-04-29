@@ -15,6 +15,7 @@ typedef struct session session_t;
 
 struct session_ops {
     int (*set_socket_id) (session_t *self, const char *socket_id);
+    int (*set_stream_id) (session_t *self, unsigned long stream_id);
     void (*destroy) (session_t **self_p);
 };
 
@@ -25,6 +26,9 @@ struct session {
 
 int
     session_set_socket_id (session_t *self, const char *socket_id);
+
+int
+    session_set_stream_id (session_t *self, unsigned long stream_id);
 
 void
     session_destroy (session_t **self_p);

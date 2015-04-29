@@ -20,6 +20,13 @@ session_set_socket_id (session_t *self, const char *socket_id)
         return 0;
 }
 
+int
+session_set_stream_id (session_t *self, unsigned long stream_id)
+{
+    assert (self);
+    return self->ops.set_stream_id (self, stream_id);
+}
+
 void
 session_destroy (session_t **self_p)
 {
