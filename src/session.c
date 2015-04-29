@@ -21,10 +21,10 @@ session_set_socket_id (session_t *self, const char *socket_id)
 }
 
 void
-session_set_stream_id (session_t *self, unsigned long stream_id)
+session_set_session_id (session_t *self, unsigned long session_id)
 {
     assert (self);
-    self->ops.set_stream_id (self, stream_id);
+    self->ops.set_session_id (self, session_id);
 }
 
 void

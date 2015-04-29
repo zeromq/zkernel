@@ -22,7 +22,7 @@ struct proxy {
     reactor_t *reactor;
     struct actor actor_ifc;
     unsigned int msgs_in_flight;
-    unsigned long next_stream_id;
+    unsigned long next_session_id;
     bool stopped;
     msg_t *stop_msg;
 };
@@ -85,7 +85,7 @@ s_session (proxy_t *self, msg_t *msg)
         msg_destroy (&msg);
     }
     else {
-        session_set_stream_id (session, self->next_stream_id++);
+        session_set_session_id (session, self->next_session_id++);
         msg->msg_type = ZKERNEL_START_IO;
         msg->u.start_io.io_object = (io_object_t *) session;
         msg->u.start_io.reply_to = self->actor_ifc;
