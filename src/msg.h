@@ -38,6 +38,15 @@ struct msg_t {
         } start_io_nak;
 
         struct {
+            unsigned long session_id;
+            void *io_handle;
+        } attach_session;
+
+        struct {
+            unsigned long session_id;
+        } detach_session;
+
+        struct {
         } stop_proxy;
 
         struct {
