@@ -316,12 +316,11 @@ s_session_set_socket_id (session_t *base, const char *socket_id)
     return protocol_engine_set_socket_id (self->protocol_engine, socket_id);
 }
 
-static int
+static void
 s_session_set_stream_id (session_t *base, unsigned long stream_id)
 {
     tcp_session_t *self = (tcp_session_t *) base;
     self->stream_id = stream_id;
-    return 0;
 }
 
 static void
