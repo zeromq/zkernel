@@ -26,6 +26,7 @@
 struct tcp_session {
     session_t base;
     int fd;
+    unsigned long stream_id;
     msg_queue_t *msg_queue;
     protocol_engine_t *protocol_engine;
     protocol_engine_info_t peinfo;
@@ -315,6 +316,14 @@ s_session_set_socket_id (session_t *base, const char *socket_id)
     return protocol_engine_set_socket_id (self->protocol_engine, socket_id);
 }
 
+static int
+s_session_set_stream_id (session_t *base, unsigned long stream_id)
+{
+    tcp_session_t *self = (tcp_session_t *) base;
+    self->stream_id = stream_id;
+    return 0;
+}
+
 static void
 s_session_destroy (session_t **self_p)
 {
@@ -329,5 +338,6 @@ static struct io_object_ops io_ops = {
 
 static struct session_ops session_ops = {
     .set_socket_id = s_session_set_socket_id,
+    .set_stream_id = s_session_set_stream_id,
     .destroy = s_session_destroy,
 };
