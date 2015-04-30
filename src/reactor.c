@@ -47,7 +47,7 @@ static void *
     s_loop (void *udata);
 
 static void
-    s_start_io (reactor_t *self, msg_t *msg);
+    s_prepare_io (reactor_t *self, msg_t *msg);
 
 static void
     s_remove (reactor_t *self, struct event_source *ev_src);
@@ -240,9 +240,9 @@ s_loop (void *udata)
                     stop = 1;
                 }
                 else
-                if (msg->msg_type == ZKERNEL_START_IO) {
-                    actor_t reply_to = msg->u.start_io.reply_to;
-                    s_start_io (self, msg);
+                if (msg->msg_type == ZKERNEL_PREPARE_IO) {
+                    actor_t reply_to = msg->u.prepare_io.reply_to;
+                    s_prepare_io (self, msg);
                     actor_send (&reply_to, msg);
                 }
                 else
@@ -273,11 +273,11 @@ s_loop (void *udata)
 }
 
 static void
-s_start_io (reactor_t *self, msg_t *msg)
+s_prepare_io (reactor_t *self, msg_t *msg)
 {
     assert (self);
 
-    io_object_t *io_object = msg->u.start_io.io_object;
+    io_object_t *io_object = msg->u.prepare_io.io_object;
 
     struct event_source *ev_src = malloc (sizeof *ev_src);
     io_object->io_handle = ev_src;
@@ -305,16 +305,16 @@ s_start_io (reactor_t *self, msg_t *msg)
         ev_src->timer = timer->t;
     }
 
-    msg->msg_type = ZKERNEL_START_IO_ACK;
-    msg->u.start_io_ack.io_object = io_object;
+    msg->msg_type = ZKERNEL_PREPARE_IO_ACK;
+    msg->u.prepare_io_ack.io_object = io_object;
 
     return;
 
 error:
     if (ev_src)
         free (ev_src);
-    msg->msg_type = ZKERNEL_START_IO_NAK;
-    msg->u.start_io_nak.io_object = io_object;
+    msg->msg_type = ZKERNEL_PREPARE_IO_NAK;
+    msg->u.prepare_io_nak.io_object = io_object;
 }
 
 static void

@@ -86,9 +86,9 @@ s_session (proxy_t *self, msg_t *msg)
     }
     else {
         session_set_session_id (session, self->next_session_id++);
-        msg->msg_type = ZKERNEL_START_IO;
-        msg->u.start_io.io_object = (io_object_t *) session;
-        msg->u.start_io.reply_to = self->actor_ifc;
+        msg->msg_type = ZKERNEL_PREPARE_IO;
+        msg->u.prepare_io.io_object = (io_object_t *) session;
+        msg->u.prepare_io.reply_to = self->actor_ifc;
 
         reactor_send (self->reactor, msg);
         self->msgs_in_flight++;
@@ -96,7 +96,7 @@ s_session (proxy_t *self, msg_t *msg)
 }
 
 static void
-s_start_ack (proxy_t *self, msg_t *msg)
+s_prepare_io_ack (proxy_t *self, msg_t *msg)
 {
     self->msgs_in_flight--;
 
@@ -107,9 +107,9 @@ s_start_ack (proxy_t *self, msg_t *msg)
 }
 
 static void
-s_start_nak (proxy_t *self, msg_t *msg)
+s_prepare_io_nak (proxy_t *self, msg_t *msg)
 {
-    session_t *session = (session_t *) msg->u.start_io_nak.io_object;
+    session_t *session = (session_t *) msg->u.prepare_io_nak.io_object;
     session_destroy (&session);
     msg_destroy (&msg);
     self->msgs_in_flight--;
@@ -144,11 +144,11 @@ proxy_message (proxy_t *self, msg_t *msg)
     case ZKERNEL_SESSION:
         s_session (self, msg);
         break;
-    case ZKERNEL_START_IO_ACK:
-        s_start_ack (self, msg);
+    case ZKERNEL_PREPARE_IO_ACK:
+        s_prepare_io_ack (self, msg);
         break;
-    case ZKERNEL_START_IO_NAK:
-        s_start_nak (self, msg);
+    case ZKERNEL_PREPARE_IO_NAK:
+        s_prepare_io_nak (self, msg);
         break;
     case ZKERNEL_STOP_PROXY:
         s_stop (self, msg);

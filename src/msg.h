@@ -27,15 +27,16 @@ struct msg_t {
         struct {
             struct io_object *io_object;
             actor_t reply_to;
-        } start_io;
+        } prepare_io;
 
         struct {
             struct io_object *io_object;
-        } start_io_ack;
+            void *io_handle;
+        } prepare_io_ack;
 
         struct {
             struct io_object *io_object;
-        } start_io_nak;
+        } prepare_io_nak;
 
         struct {
             unsigned long session_id;
