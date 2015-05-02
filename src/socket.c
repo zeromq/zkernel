@@ -32,6 +32,8 @@ struct socket {
     proxy_t *proxy;
     void *mbox;
     session_t *sessions [MAX_SESSIONS];
+    unsigned long listener_next_id;
+    unsigned long connector_next_id;
     size_t current_session;
     size_t active_sessions;
     struct actor actor_ifc;
@@ -110,9 +112,6 @@ process_msg (socket_t *self, msg_t **msg_p)
     case ZKERNEL_MSG_TYPE_PDU:
         msg_destroy (&msg);
         break;
-    case ZKERNEL_REGISTER:
-        msg_destroy (&msg);
-        break;
     case ZKERNEL_REMOVE:
         msg_destroy (&msg);
         break;
@@ -143,15 +142,19 @@ socket_bind (socket_t *self, unsigned short port,
         tcp_listener_new (protocol_engine_constructor, self, self->proxy);
     if (!listener)
         goto fail;
-    int rc = tcp_listener_bind (listener, port);
+    const int rc = tcp_listener_bind (listener, port);
     if (rc == -1)
         goto fail;
-    msg_t *msg = msg_new (ZKERNEL_REGISTER);
+    msg_t *msg = msg_new (ZKERNEL_START_IO);
     if (!msg)
         goto fail;
-    msg->reply_to = self->actor_ifc;
-    msg->io_object = (io_object_t *) listener;
+
+    msg->u.start_io.object_id = self->listener_next_id++;
+    msg->u.start_io.io_object = (io_object_t *) listener;
+    msg->u.start_io.reply_to = self->actor_ifc;
+
     reactor_send (self->reactor, msg);
+
     return 0;
 
 fail:
@@ -181,13 +184,16 @@ socket_connect (socket_t *self, unsigned short port,
         tcp_connector_destroy (&connector);
         return rc;
     }
-    msg_t *msg = msg_new (ZKERNEL_REGISTER);
+    msg_t *msg = msg_new (ZKERNEL_START_IO);
     if (!msg) {
         tcp_connector_destroy (&connector);
         return -1;
     }
-    msg->reply_to = self->actor_ifc;
-    msg->io_object = (io_object_t *) connector;
+
+    msg->u.start_io.object_id = self->connector_next_id++;
+    msg->u.start_io.io_object = (io_object_t *) connector;
+    msg->u.start_io.reply_to = self->actor_ifc;
+
     reactor_send (self->reactor, msg);
     return 0;
 }

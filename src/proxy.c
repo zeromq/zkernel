@@ -6,7 +6,6 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <stdbool.h>
 
 #include "msg.h"
 #include "actor.h"
@@ -21,10 +20,7 @@ struct proxy {
     dispatcher_t *dispatcher;
     reactor_t *reactor;
     struct actor actor_ifc;
-    unsigned int msgs_in_flight;
     unsigned long next_session_id;
-    bool stopped;
-    msg_t *stop_msg;
 };
 
 static int
@@ -80,59 +76,22 @@ s_session (proxy_t *self, msg_t *msg)
     session_t *session = msg->u.session.session;
     assert (session);
 
-    if (self->stopped) {
+    msg_t *msg2 = msg_new (ZKERNEL_START_IO);
+    if (msg2) {
+        const unsigned long session_id =
+            self->next_session_id++;
+        msg->u.session.session_id = session_id;
+        actor_send (self->socket, msg);
+
+        msg2->u.start_io.object_id = session_id;
+        msg2->u.start_io.io_object = (io_object_t *) session;
+        msg2->u.start_io.reply_to = *self->socket;
+        reactor_send (self->reactor, msg2);
+    }
+    else {
         session_destroy (&session);
         msg_destroy (&msg);
     }
-    else {
-        session_set_session_id (session, self->next_session_id++);
-        msg->msg_type = ZKERNEL_PREPARE_IO;
-        msg->u.prepare_io.io_object = (io_object_t *) session;
-        msg->u.prepare_io.reply_to = self->actor_ifc;
-
-        reactor_send (self->reactor, msg);
-        self->msgs_in_flight++;
-    }
-}
-
-static void
-s_prepare_io_ack (proxy_t *self, msg_t *msg)
-{
-    self->msgs_in_flight--;
-
-    if (self->stopped && self->msgs_in_flight == 0) {
-        assert (self->stop_msg);
-        actor_send (self->socket, self->stop_msg);
-    }
-}
-
-static void
-s_prepare_io_nak (proxy_t *self, msg_t *msg)
-{
-    session_t *session = (session_t *) msg->u.prepare_io_nak.io_object;
-    session_destroy (&session);
-    msg_destroy (&msg);
-    self->msgs_in_flight--;
-
-    if (self->stopped && self->msgs_in_flight == 0) {
-        assert (self->stop_msg);
-        actor_send (self->socket, self->stop_msg);
-    }
-}
-
-static void
-s_stop (proxy_t *self, msg_t *msg)
-{
-    assert (!self->stopped);
-
-    msg->msg_type = ZKERNEL_PROXY_STOPPED;
-
-    if (self->msgs_in_flight == 0)
-        actor_send (self->socket, msg);
-    else
-        self->stop_msg = msg;
-
-    self->stopped = true;
 }
 
 void
@@ -143,15 +102,6 @@ proxy_message (proxy_t *self, msg_t *msg)
     switch (msg->msg_type) {
     case ZKERNEL_SESSION:
         s_session (self, msg);
-        break;
-    case ZKERNEL_PREPARE_IO_ACK:
-        s_prepare_io_ack (self, msg);
-        break;
-    case ZKERNEL_PREPARE_IO_NAK:
-        s_prepare_io_nak (self, msg);
-        break;
-    case ZKERNEL_STOP_PROXY:
-        s_stop (self, msg);
         break;
     default:
         break;

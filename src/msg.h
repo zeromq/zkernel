@@ -21,37 +21,27 @@ struct msg_t {
     int event_mask;
     union {
         struct {
+            unsigned long session_id;
             struct session *session;
         } session;
 
         struct {
+            unsigned long object_id;
             struct io_object *io_object;
             actor_t reply_to;
-        } prepare_io;
+        } start_io;
 
         struct {
+            unsigned long object_id;
             struct io_object *io_object;
             void *io_handle;
-        } prepare_io_ack;
+        } start_io_ack;
 
         struct {
+            unsigned long object_id;
             struct io_object *io_object;
-        } prepare_io_nak;
+        } start_io_nak;
 
-        struct {
-            unsigned long session_id;
-            void *io_handle;
-        } attach_session;
-
-        struct {
-            unsigned long session_id;
-        } detach_session;
-
-        struct {
-        } stop_proxy;
-
-        struct {
-        } proxy_stopped;
     } u;
 };
 
