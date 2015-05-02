@@ -42,6 +42,16 @@ struct msg_t {
             struct io_object *io_object;
         } start_io_nak;
 
+        struct {
+            unsigned long object_id;
+            void *io_handle;
+            actor_t reply_to;
+        } stop_io;
+
+        struct {
+            unsigned long object_id;
+        } stop_io_ack;
+
     } u;
 };
 

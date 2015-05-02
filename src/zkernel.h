@@ -11,7 +11,6 @@
 
 //  Command ids
 #define ZKERNEL_KILL            1
-#define ZKERNEL_REMOVE          3
 #define ZKERNEL_ACTIVATE        4
 
 //  Event ids
@@ -22,6 +21,8 @@
 #define ZKERNEL_START_IO        2
 #define ZKERNEL_START_IO_ACK    3
 #define ZKERNEL_START_IO_NAK    4
+#define ZKERNEL_STOP_IO         5
+#define ZKERNEL_STOP_IO_ACK     6
 
 //  Frame ID
 #define ZKERNEL_MSG_TYPE_PDU    32

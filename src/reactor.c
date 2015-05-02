@@ -50,7 +50,7 @@ static void
     s_register_io (reactor_t *self, msg_t *msg);
 
 static void
-    s_remove (reactor_t *self, struct event_source *ev_src);
+    s_stop_io (reactor_t *self, msg_t *msg);
 
 static void
     s_activate (reactor_t *self, struct event_source *ev_src, int event_mask);
@@ -246,12 +246,9 @@ s_loop (void *udata)
                     actor_send (&reply_to, msg);
                 }
                 else
-                if (msg->msg_type == ZKERNEL_REMOVE) {
-                    io_object_t *io_object = (io_object_t *) msg->io_object;
-                    struct event_source *ev_src =
-                        (struct event_source *) io_object->io_handle;
-                    assert (ev_src);
-                    s_remove (self, ev_src);
+                if (msg->msg_type == ZKERNEL_STOP_IO) {
+                    actor_t reply_to = msg->u.stop_io.reply_to;
+                    s_stop_io (self, msg);
                     actor_send (&msg->reply_to, msg);
                 }
                 else
@@ -320,9 +317,11 @@ error:
 }
 
 static void
-s_remove (reactor_t *self, struct event_source *ev_src)
+s_stop_io (reactor_t *self, msg_t *msg)
 {
-    assert (self);
+    const unsigned long object_id = msg->u.stop_io.object_id;
+    struct event_source *ev_src =
+        (struct event_source *) msg->u.stop_io.io_handle;
     assert (ev_src);
 
     if (ev_src->fd != -1) {
@@ -337,6 +336,9 @@ s_remove (reactor_t *self, struct event_source *ev_src)
         s_free_timer (timer);
     }
     free (ev_src);
+
+    msg->msg_type = ZKERNEL_STOP_IO_ACK;
+    msg->u.stop_io_ack.object_id = object_id;
 }
 
 static void
