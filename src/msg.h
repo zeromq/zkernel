@@ -14,7 +14,6 @@ struct proxy;
 
 struct msg_t {
     int msg_type;
-    actor_t reply_to;
     struct msg_t *next;
     struct io_object *io_object;
     struct proxy *proxy;

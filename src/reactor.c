@@ -249,7 +249,7 @@ s_loop (void *udata)
                 if (msg->msg_type == ZKERNEL_STOP_IO) {
                     actor_t reply_to = msg->u.stop_io.reply_to;
                     s_stop_io (self, msg);
-                    actor_send (&msg->reply_to, msg);
+                    actor_send (&reply_to, msg);
                 }
                 else
                 if (msg->msg_type == ZKERNEL_ACTIVATE) {
