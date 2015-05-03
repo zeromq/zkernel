@@ -47,7 +47,7 @@ static void *
     s_loop (void *udata);
 
 static void
-    s_register_io (reactor_t *self, msg_t *msg);
+    s_start_io (reactor_t *self, msg_t *msg);
 
 static void
     s_stop_io (reactor_t *self, msg_t *msg);
@@ -242,7 +242,7 @@ s_loop (void *udata)
                 else
                 if (msg->msg_type == ZKERNEL_START_IO) {
                     actor_t reply_to = msg->u.start_io.reply_to;
-                    s_register_io (self, msg);
+                    s_start_io (self, msg);
                     actor_send (&reply_to, msg);
                 }
                 else
@@ -270,7 +270,7 @@ s_loop (void *udata)
 }
 
 static void
-s_register_io (reactor_t *self, msg_t *msg)
+s_start_io (reactor_t *self, msg_t *msg)
 {
     assert (self);
 
