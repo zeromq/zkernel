@@ -14,7 +14,6 @@
 #define ZKERNEL_ACTIVATE        4
 
 //  Event ids
-#define ZKERNEL_SESSION_CLOSED  17
 #define ZKERNEL_READY_TO_SEND   18
 
 #define ZKERNEL_SESSION         1
@@ -23,6 +22,7 @@
 #define ZKERNEL_START_IO_NAK    4
 #define ZKERNEL_STOP_IO         5
 #define ZKERNEL_STOP_IO_ACK     6
+#define ZKERNEL_SESSION_CLOSED  7
 
 //  Frame ID
 #define ZKERNEL_MSG_TYPE_PDU    32

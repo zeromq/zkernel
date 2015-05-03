@@ -51,6 +51,10 @@ struct msg_t {
             unsigned long object_id;
         } stop_io_ack;
 
+        struct {
+            unsigned long session_id;
+        } session_closed;
+
     } u;
 };
 
@@ -70,16 +74,6 @@ typedef struct kill_cmd kill_cmd_t;
 
 kill_cmd_t *
     kill_cmd_new ();
-
-struct session_closed_ev {
-    struct msg_t base;
-    void *ptr;
-};
-
-typedef struct session_closed_ev session_closed_ev_t;
-
-session_closed_ev_t *
-    session_closed_ev_new ();
 
 struct ready_to_send_ev {
     struct msg_t base;

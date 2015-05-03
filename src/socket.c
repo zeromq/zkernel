@@ -52,7 +52,7 @@ static void
     s_session (socket_t *self, msg_t *msg);
 
 static void
-    s_session_closed (socket_t *self, session_closed_ev_t *ev);
+    s_session_closed (socket_t *self, msg_t *msg);
 
 static void
     s_ready_to_send (socket_t *self, ready_to_send_ev_t *ev);
@@ -117,7 +117,7 @@ process_msg (socket_t *self, msg_t **msg_p)
         msg_destroy (&msg);
         break;
     case ZKERNEL_SESSION_CLOSED:
-        s_session_closed (self, (session_closed_ev_t *) msg);
+        s_session_closed (self, msg);
         msg_destroy (&msg);
         break;
     case ZKERNEL_READY_TO_SEND:
@@ -317,20 +317,8 @@ s_session (socket_t *self, msg_t *msg)
 }
 
 static void
-s_session_closed (socket_t *self, session_closed_ev_t *ev)
+s_session_closed (socket_t *self, msg_t *msg)
 {
-    printf ("session %p closed\n", ev->ptr);
-    for (int i = 0; i < MAX_SESSIONS; i++) {
-        if (self->sessions [i] == ev->ptr) {
-            if (i < self->active_sessions) {
-                self->sessions [i] = self->sessions [self->active_sessions];
-                self->sessions [self->active_sessions--] = NULL;
-            }
-            else
-                self->sessions [i] = NULL;
-            break;
-        }
-    }
 }
 
 static void

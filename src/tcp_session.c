@@ -106,10 +106,10 @@ tcp_session_destroy (tcp_session_t **self_p)
 static void
 s_send_session_closed (tcp_session_t *self)
 {
-    session_closed_ev_t *ev = session_closed_ev_new ();
-    assert (ev);
-    ev->ptr = self;
-    socket_send_msg (self->owner, (msg_t *) ev);
+    msg_t *msg = msg_new (ZKERNEL_SESSION_CLOSED);
+    assert (msg);
+    msg->u.session_closed.session_id = self->session_id;
+    socket_send_msg (self->owner, msg);
 }
 
 static int
