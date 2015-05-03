@@ -80,6 +80,7 @@ s_session (proxy_t *self, msg_t *msg)
     if (msg2) {
         const unsigned long session_id =
             self->next_session_id++;
+        session_set_session_id (session, session_id);
         msg->u.session.session_id = session_id;
         actor_send (self->socket, msg);
 

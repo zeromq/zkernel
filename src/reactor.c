@@ -290,7 +290,6 @@ s_register_io (reactor_t *self, msg_t *msg)
 
     int fd = -1;
     uint32_t timer_interval = 0;
-    // XXX pass object_id to init callback
     const int rc = io_object_init (io_object, &fd, &timer_interval);
     if (fd == -1)
         goto error;
