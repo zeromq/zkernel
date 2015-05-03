@@ -86,13 +86,25 @@ s_session (proxy_t *self, msg_t *msg)
 
         msg2->u.start_io.object_id = session_id;
         msg2->u.start_io.io_object = (io_object_t *) session;
-        msg2->u.start_io.reply_to = *self->socket;
+        msg2->u.start_io.reply_to = self->actor_ifc;
         reactor_send (self->reactor, msg2);
     }
     else {
         session_destroy (&session);
         msg_destroy (&msg);
     }
+}
+
+static void
+s_start_io_ack (proxy_t *self, msg_t *msg)
+{
+    actor_send (self->socket, msg);
+}
+
+static void
+s_start_io_nak (proxy_t *self, msg_t *msg)
+{
+    actor_send (self->socket, msg);
 }
 
 void
@@ -103,6 +115,12 @@ proxy_message (proxy_t *self, msg_t *msg)
     switch (msg->msg_type) {
     case ZKERNEL_SESSION:
         s_session (self, msg);
+        break;
+    case ZKERNEL_START_IO_ACK:
+        s_start_io_ack (self, msg);
+        break;
+    case ZKERNEL_START_IO_NAK:
+        s_start_io_nak (self, msg);
         break;
     default:
         break;
