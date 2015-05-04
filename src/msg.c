@@ -38,12 +38,3 @@ kill_cmd_new ()
         *cmd = (kill_cmd_t) { .base.msg_type = ZKERNEL_KILL };
     return cmd;
 }
-
-ready_to_send_ev_t *
-ready_to_send_ev_new ()
-{
-    ready_to_send_ev_t *ev = (ready_to_send_ev_t *) malloc (sizeof *ev);
-    if (ev != NULL)
-        *ev = (ready_to_send_ev_t) { .base.msg_type = ZKERNEL_READY_TO_SEND };
-    return ev;
-}

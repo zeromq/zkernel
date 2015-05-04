@@ -13,9 +13,6 @@
 #define ZKERNEL_KILL            1
 #define ZKERNEL_ACTIVATE        4
 
-//  Event ids
-#define ZKERNEL_READY_TO_SEND   18
-
 #define ZKERNEL_SESSION         1
 #define ZKERNEL_START_IO        2
 #define ZKERNEL_START_IO_ACK    3

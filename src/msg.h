@@ -75,14 +75,4 @@ typedef struct kill_cmd kill_cmd_t;
 kill_cmd_t *
     kill_cmd_new ();
 
-struct ready_to_send_ev {
-    struct msg_t base;
-    void *ptr;
-};
-
-typedef struct ready_to_send_ev ready_to_send_ev_t;
-
-ready_to_send_ev_t *
-    ready_to_send_ev_new ();
-
 #endif
