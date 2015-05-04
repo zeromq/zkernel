@@ -11,7 +11,6 @@
 
 //  Command ids
 #define ZKERNEL_KILL            1
-#define ZKERNEL_ACTIVATE        4
 
 #define ZKERNEL_SESSION         1
 #define ZKERNEL_START_IO        2

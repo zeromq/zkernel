@@ -53,9 +53,6 @@ static void
     s_stop_io (reactor_t *self, msg_t *msg);
 
 static void
-    s_activate (reactor_t *self, struct event_source *ev_src, int event_mask);
-
-static void
     s_update_event_source (
         reactor_t *self, struct event_source *ev_src, int fd, int event_mask);
 
@@ -252,14 +249,6 @@ s_loop (void *udata)
                     actor_send (&reply_to, msg);
                 }
                 else
-                if (msg->msg_type == ZKERNEL_ACTIVATE) {
-                    io_object_t *io_object = (io_object_t *) msg->io_object;
-                    struct event_source *ev_src =
-                        (struct event_source *) io_object->io_handle;
-                    assert (ev_src);
-                    s_activate (self, ev_src, msg->event_mask);
-                }
-                else
                     msg_destroy (&msg);
                 msg = next_msg;
             }
@@ -338,13 +327,6 @@ s_stop_io (reactor_t *self, msg_t *msg)
 
     msg->msg_type = ZKERNEL_STOP_IO_ACK;
     msg->u.stop_io_ack.object_id = object_id;
-}
-
-static void
-s_activate (reactor_t *self, struct event_source *ev_src, int event_mask)
-{
-    s_update_event_source (
-        self, ev_src, ev_src->fd, ev_src->event_mask | event_mask);
 }
 
 void
