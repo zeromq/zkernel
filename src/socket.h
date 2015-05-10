@@ -22,7 +22,7 @@ void
     socket_destroy (socket_t **self_p);
 
 int
-    socket_bind (socket_t *self, unsigned short port, protocol_engine_constructor_t *protocol_engine_constructor);
+    socket_listen (socket_t *self, unsigned short port, protocol_engine_constructor_t *protocol_engine_constructor);
 
 int
     socket_connect (socket_t *self, unsigned short port, protocol_engine_constructor_t *protocol_engine_constructor);

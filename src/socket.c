@@ -125,7 +125,7 @@ process_msg (socket_t *self, msg_t **msg_p)
 }
 
 int
-socket_bind (socket_t *self, unsigned short port,
+socket_listen (socket_t *self, unsigned short port,
         protocol_engine_constructor_t *protocol_engine_constructor)
 {
     tcp_listener_t *listener =
