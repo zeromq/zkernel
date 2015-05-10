@@ -12,6 +12,8 @@
 #include "reactor.h"
 #include "socket.h"
 #include "msg.h"
+#include "tcp_listener.h"
+#include "zmtp_handshake.h"
 
 int main()
 {
@@ -24,8 +26,15 @@ int main()
     socket_t *socket = socket_new (dispatcher, reactor);
     assert (socket);
 
-    // const int rc = socket_listen (socket, 2226);
-    //assert (rc != -1);
+    tcp_listener_t *listener =
+        tcp_listener_new (zmtp_handshake_new_protocol_engine, socket);
+    assert (listener);
+
+    int rc = tcp_listener_bind (listener, 5566);
+    assert (rc == 0);
+
+    rc = socket_listen (socket, (io_object_t *) listener);
+    assert (rc != -1);
 
     for (int i = 0; i < 10; i++) {
         struct msg_t *msg = msg_new (0);

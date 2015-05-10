@@ -9,6 +9,7 @@
 
 #include "msg.h"
 #include "reactor.h"
+#include "io_object.h"
 #include "protocol_engine.h"
 
 typedef struct socket socket_t;
@@ -26,7 +27,7 @@ struct proxy *
     socket_proxy (socket_t *self);
 
 int
-    socket_listen (socket_t *self, unsigned short port, protocol_engine_constructor_t *protocol_engine_constructor);
+    socket_listen (socket_t *self, io_object_t *listener);
 
 int
     socket_connect (socket_t *self, unsigned short port, protocol_engine_constructor_t *protocol_engine_constructor);

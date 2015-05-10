@@ -15,7 +15,6 @@
 #include "dispatcher.h"
 #include "reactor.h"
 #include "proxy.h"
-#include "tcp_listener.h"
 #include "tcp_connector.h"
 #include "session.h"
 #include "io_object.h"
@@ -131,32 +130,19 @@ process_msg (socket_t *self, msg_t **msg_p)
 }
 
 int
-socket_listen (socket_t *self, unsigned short port,
-        protocol_engine_constructor_t *protocol_engine_constructor)
+socket_listen (socket_t *self, io_object_t *listener)
 {
-    tcp_listener_t *listener =
-        tcp_listener_new (protocol_engine_constructor, self, self->proxy);
-    if (!listener)
-        goto fail;
-    const int rc = tcp_listener_bind (listener, port);
-    if (rc == -1)
-        goto fail;
     msg_t *msg = msg_new (ZKERNEL_START_IO);
     if (!msg)
-        goto fail;
+        return -1;
 
     msg->u.start_io.object_id = self->listener_next_id++;
-    msg->u.start_io.io_object = (io_object_t *) listener;
+    msg->u.start_io.io_object = listener;
     msg->u.start_io.reply_to = self->actor_ifc;
 
     reactor_send (self->reactor, msg);
 
     return 0;
-
-fail:
-    if (listener)
-        tcp_listener_destroy (&listener);
-    return -1;
 }
 
 int
