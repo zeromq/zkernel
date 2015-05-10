@@ -7,7 +7,6 @@
 #ifndef __TCP_LISTENER_H_INCLUDED__
 #define __TCP_LISTENER_H_INCLUDED__
 
-#include "proxy.h"
 #include "socket.h"
 #include "protocol_engine.h"
 
@@ -16,7 +15,7 @@ typedef struct tcp_listener tcp_listener_t;
 tcp_listener_t *
     tcp_listener_new (
             protocol_engine_constructor_t *protocol_engine_constructor,
-            socket_t *owner, proxy_t *proxy);
+            socket_t *owner);
 
 void
     tcp_listener_destroy (tcp_listener_t **self_p);

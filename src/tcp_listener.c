@@ -27,7 +27,6 @@ struct tcp_listener {
     int fd;
     protocol_engine_constructor_t *protocol_engine_constructor;
     socket_t *owner;
-    proxy_t *proxy;
 };
 
 static int
@@ -42,7 +41,7 @@ static struct io_object_ops ops = {
 };
 
 tcp_listener_t *
-tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, socket_t *owner, proxy_t *proxy)
+tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, socket_t *owner)
 {
     tcp_listener_t *self = malloc (sizeof *self);
     if (self)
@@ -51,7 +50,6 @@ tcp_listener_new (protocol_engine_constructor_t *protocol_engine_constructor, so
             .fd = -1,
             .protocol_engine_constructor = protocol_engine_constructor,
             .owner = owner,
-            .proxy = proxy,
         };
     return self;
 }
@@ -156,7 +154,7 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
             tcp_session_destroy (&session);
         else {
             msg->u.session.session = (session_t *) session;
-            proxy_send (self->proxy, msg);
+            proxy_send (socket_proxy (self->owner), msg);
         }
     }
     return 1 | 2;
