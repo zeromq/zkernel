@@ -96,6 +96,12 @@ socket_destroy (socket_t **self_p)
     }
 }
 
+proxy_t *
+socket_proxy (socket_t *self)
+{
+    return self->proxy;
+}
+
 static void
 process_msg (socket_t *self, msg_t **msg_p)
 {
