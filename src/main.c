@@ -7,13 +7,41 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include "dispatcher.h"
 #include "reactor.h"
 #include "socket.h"
 #include "msg.h"
+#include "tcp_connector.h"
 #include "tcp_listener.h"
 #include "zmtp_handshake.h"
+
+static int
+s_tcp_connect (socket_t *socket, unsigned short port)
+{
+    tcp_connector_t *connector =
+        tcp_connector_new (zmtp_handshake_new_protocol_engine, socket);
+    if (!connector)
+        return -1;
+    int rc = tcp_connector_connect (connector, port);
+    if (rc != -1) {
+        close (rc); //  close returned descriptor for now
+        tcp_connector_destroy (&connector);
+        return 0;
+    }
+    else
+    if (tcp_connector_errno (connector) != EINPROGRESS) {
+        tcp_connector_destroy (&connector);
+        return rc;
+    }
+
+    rc = socket_connect (socket, (io_object_t *) connector);
+    assert (rc == 0);
+
+    return 0;
+}
 
 int main()
 {

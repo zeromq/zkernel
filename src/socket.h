@@ -30,7 +30,7 @@ int
     socket_listen (socket_t *self, io_object_t *listener);
 
 int
-    socket_connect (socket_t *self, unsigned short port, protocol_engine_constructor_t *protocol_engine_constructor);
+    socket_connect (socket_t *self, io_object_t *connector);
 
 void
     socket_send_msg (socket_t *self, msg_t *msg);

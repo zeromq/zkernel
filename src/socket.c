@@ -15,7 +15,6 @@
 #include "dispatcher.h"
 #include "reactor.h"
 #include "proxy.h"
-#include "tcp_connector.h"
 #include "session.h"
 #include "io_object.h"
 #include "socket.h"
@@ -146,37 +145,20 @@ socket_listen (socket_t *self, io_object_t *listener)
 }
 
 int
-socket_connect (socket_t *self, unsigned short port,
-        protocol_engine_constructor_t *protocol_engine_constructor)
+socket_connect (socket_t *self, io_object_t *connector)
 {
     assert (self);
 
-    tcp_connector_t *connector =
-        tcp_connector_new (protocol_engine_constructor, self);
-    if (!connector)
-        return -1;
-    const int rc = tcp_connector_connect (connector, port);
-    if (rc != -1) {
-        close (rc); //  close returned descriptor for now
-        tcp_connector_destroy (&connector);
-        return 0;
-    }
-    else
-    if (tcp_connector_errno (connector) != EINPROGRESS) {
-        tcp_connector_destroy (&connector);
-        return rc;
-    }
     msg_t *msg = msg_new (ZKERNEL_START_IO);
-    if (!msg) {
-        tcp_connector_destroy (&connector);
+    if (!msg)
         return -1;
-    }
 
     msg->u.start_io.object_id = self->connector_next_id++;
-    msg->u.start_io.io_object = (io_object_t *) connector;
+    msg->u.start_io.io_object = connector;
     msg->u.start_io.reply_to = self->actor_ifc;
 
     reactor_send (self->reactor, msg);
+
     return 0;
 }
 
