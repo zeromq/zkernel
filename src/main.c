@@ -43,6 +43,22 @@ s_tcp_connect (socket_t *socket, unsigned short port)
     return 0;
 }
 
+static int
+s_tcp_bind (socket_t *socket, unsigned short port)
+{
+    tcp_listener_t *listener =
+        tcp_listener_new (zmtp_handshake_new_protocol_engine, socket);
+    assert (listener);
+
+    int rc = tcp_listener_bind (listener, port);
+    assert (rc == 0);
+
+    rc = socket_listen (socket, (io_object_t *) listener);
+    assert (rc != -1);
+
+    return 0;
+}
+
 int main()
 {
     reactor_t *reactor = reactor_new ();
@@ -54,15 +70,7 @@ int main()
     socket_t *socket = socket_new (dispatcher, reactor);
     assert (socket);
 
-    tcp_listener_t *listener =
-        tcp_listener_new (zmtp_handshake_new_protocol_engine, socket);
-    assert (listener);
-
-    int rc = tcp_listener_bind (listener, 5566);
-    assert (rc == 0);
-
-    rc = socket_listen (socket, (io_object_t *) listener);
-    assert (rc != -1);
+    s_tcp_bind (socket, 5556);
 
     for (int i = 0; i < 10; i++) {
         struct msg_t *msg = msg_new (0);
