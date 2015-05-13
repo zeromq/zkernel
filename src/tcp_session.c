@@ -309,13 +309,6 @@ s_io_message (io_object_t *self_, msg_t *msg)
     return ZKERNEL_POLLIN | ZKERNEL_POLLOUT;
 }
 
-static int
-s_session_set_socket_id (session_t *base, const char *socket_id)
-{
-    tcp_session_t *self = (tcp_session_t *) base;
-    return protocol_engine_set_socket_id (self->protocol_engine, socket_id);
-}
-
 static void
 s_session_set_session_id (session_t *base, unsigned long session_id)
 {
@@ -336,7 +329,6 @@ static struct io_object_ops io_ops = {
 };
 
 static struct session_ops session_ops = {
-    .set_socket_id = s_session_set_socket_id,
     .set_session_id = s_session_set_session_id,
     .destroy = s_session_destroy,
 };

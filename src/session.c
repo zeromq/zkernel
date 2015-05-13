@@ -9,17 +9,6 @@
 
 #include "session.h"
 
-int
-session_set_socket_id (session_t *self, const char *socket_id)
-{
-    assert (self);
-
-    if (self->ops.set_socket_id)
-        return self->ops.set_socket_id (self, socket_id);
-    else
-        return 0;
-}
-
 void
 session_set_session_id (session_t *self, unsigned long session_id)
 {
