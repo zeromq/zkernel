@@ -26,7 +26,6 @@
 struct tcp_session {
     session_t base;
     int fd;
-    unsigned long session_id;
     msg_queue_t *msg_queue;
     protocol_engine_t *protocol_engine;
     protocol_engine_info_t peinfo;
@@ -108,7 +107,6 @@ s_send_session_closed (tcp_session_t *self)
 {
     msg_t *msg = msg_new (ZKERNEL_SESSION_CLOSED);
     assert (msg);
-    msg->u.session_closed.session_id = self->session_id;
     socket_send_msg (self->owner, msg);
 }
 
@@ -310,13 +308,6 @@ s_io_message (io_object_t *self_, msg_t *msg)
 }
 
 static void
-s_session_set_session_id (session_t *base, unsigned long session_id)
-{
-    tcp_session_t *self = (tcp_session_t *) base;
-    self->session_id = session_id;
-}
-
-static void
 s_session_destroy (session_t **self_p)
 {
     tcp_session_destroy ((tcp_session_t **) self_p);
@@ -329,6 +320,5 @@ static struct io_object_ops io_ops = {
 };
 
 static struct session_ops session_ops = {
-    .set_session_id = s_session_set_session_id,
     .destroy = s_session_destroy,
 };

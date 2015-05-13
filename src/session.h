@@ -14,7 +14,6 @@
 typedef struct session session_t;
 
 struct session_ops {
-    void (*set_session_id) (session_t *self, unsigned long session_id);
     void (*destroy) (session_t **self_p);
 };
 
@@ -22,9 +21,6 @@ struct session {
     io_object_t base;
     struct session_ops ops;
 };
-
-void
-    session_set_session_id (session_t *self, unsigned long session_id);
 
 void
     session_destroy (session_t **self_p);

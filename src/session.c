@@ -10,13 +10,6 @@
 #include "session.h"
 
 void
-session_set_session_id (session_t *self, unsigned long session_id)
-{
-    assert (self);
-    self->ops.set_session_id (self, session_id);
-}
-
-void
 session_destroy (session_t **self_p)
 {
     assert (self_p);

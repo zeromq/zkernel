@@ -18,7 +18,6 @@ struct msg_t {
     struct proxy *proxy;
     union {
         struct {
-            unsigned long session_id;
             struct session *session;
         } session;
 
@@ -50,7 +49,6 @@ struct msg_t {
         } stop_io_ack;
 
         struct {
-            unsigned long session_id;
         } session_closed;
 
     } u;
