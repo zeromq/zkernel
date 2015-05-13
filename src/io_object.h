@@ -15,6 +15,7 @@ typedef struct io_object io_object_t;
 
 struct io_object_ops {
     int (*init) (io_object_t *self, int *fd, uint32_t *timer_interval);
+    void (*destroy) (io_object_t **self_p);
     int (*event) (io_object_t *self, uint32_t flags, int *fd, uint32_t *timer_interval);
     int (*message) (io_object_t *self, msg_t *msg);
     int (*timeout) (io_object_t *self, int *fd, uint32_t *timer_interval);
@@ -24,6 +25,9 @@ struct io_object {
     void *io_handle;
     struct io_object_ops ops;
 };
+
+void
+    io_object_destroy (io_object_t **self_p);
 
 inline int
 io_object_init (io_object_t *self, int *fd, uint32_t *timer_interval)
