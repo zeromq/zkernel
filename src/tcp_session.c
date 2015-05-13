@@ -102,6 +102,12 @@ tcp_session_destroy (tcp_session_t **self_p)
     }
 }
 
+void
+s_destroy (io_object_t **self_p)
+{
+    tcp_session_destroy ((tcp_session_t **) self_p);
+}
+
 static void
 s_send_session_closed (tcp_session_t *self)
 {
@@ -315,6 +321,7 @@ s_session_destroy (session_t **self_p)
 
 static struct io_object_ops io_ops = {
     .init  = s_io_init,
+    .destroy = s_destroy,
     .event = s_io_event,
     .message = s_io_message,
 };
