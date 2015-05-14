@@ -15,7 +15,6 @@
 #include <sys/socket.h>
 
 #include "io_object.h"
-#include "session.h"
 #include "tcp_session.h"
 #include "msg.h"
 #include "msg_queue.h"
@@ -24,7 +23,7 @@
 #include "protocol_engine.h"
 
 struct tcp_session {
-    session_t base;
+    io_object_t base;
     int fd;
     msg_queue_t *msg_queue;
     protocol_engine_t *protocol_engine;
@@ -42,8 +41,6 @@ static int
 
 static struct io_object_ops io_ops;
 
-static struct session_ops session_ops;
-
 tcp_session_t *
 tcp_session_new (int fd, protocol_engine_t *protocol_engine, socket_t *owner)
 {
@@ -51,10 +48,7 @@ tcp_session_new (int fd, protocol_engine_t *protocol_engine, socket_t *owner)
     if (self) {
         const size_t buffer_size = 4096;
         *self = (tcp_session_t) {
-            .base = (session_t) {
-                .base = (io_object_t) { .ops = io_ops },
-                .ops = session_ops,
-            },
+            .base = (io_object_t) { .ops = io_ops },
             .fd = fd,
             .msg_queue = msg_queue_new (),
             .protocol_engine = protocol_engine,
@@ -313,19 +307,9 @@ s_io_message (io_object_t *self_, msg_t *msg)
     return ZKERNEL_POLLIN | ZKERNEL_POLLOUT;
 }
 
-static void
-s_session_destroy (session_t **self_p)
-{
-    tcp_session_destroy ((tcp_session_t **) self_p);
-}
-
 static struct io_object_ops io_ops = {
     .init  = s_io_init,
     .destroy = s_destroy,
     .event = s_io_event,
     .message = s_io_message,
-};
-
-static struct session_ops session_ops = {
-    .destroy = s_session_destroy,
 };

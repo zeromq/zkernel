@@ -135,7 +135,6 @@ socket_listen (socket_t *self, io_object_t *listener)
     if (!msg)
         return -1;
 
-    msg->u.start_io.object_id = self->listener_next_id++;
     msg->u.start_io.io_object = listener;
     msg->u.start_io.reply_to = self->actor_ifc;
 
@@ -153,7 +152,6 @@ socket_connect (socket_t *self, io_object_t *connector)
     if (!msg)
         return -1;
 
-    msg->u.start_io.object_id = self->connector_next_id++;
     msg->u.start_io.io_object = connector;
     msg->u.start_io.reply_to = self->actor_ifc;
 
@@ -274,7 +272,7 @@ s_session (socket_t *self, msg_t *msg)
 {
     printf ("new session: %p\n", msg->u.session.session);
     assert (self->active_sessions < MAX_SESSIONS);
-    session_t *session = msg->u.session.session;
+    session_t *session = NULL; // XXX msg->u.session.session;
     for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
         if (self->sessions [i] == NULL) {
             self->sessions [i] = self->sessions [self->active_sessions];

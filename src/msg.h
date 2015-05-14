@@ -18,23 +18,20 @@ struct msg_t {
     struct proxy *proxy;
     union {
         struct {
-            struct session *session;
+            struct io_object *session;
         } session;
 
         struct {
-            unsigned long object_id;
             struct io_object *io_object;
             actor_t reply_to;
         } start_io;
 
         struct {
-            unsigned long object_id;
             struct io_object *io_object;
             void *io_handle;
         } start_io_ack;
 
         struct {
-            unsigned long object_id;
             struct io_object *io_object;
         } start_io_nak;
 

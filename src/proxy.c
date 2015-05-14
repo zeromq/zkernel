@@ -20,7 +20,6 @@ struct proxy {
     dispatcher_t *dispatcher;
     reactor_t *reactor;
     struct actor actor_ifc;
-    unsigned long next_session_id;
 };
 
 static int
@@ -73,22 +72,19 @@ proxy_send (proxy_t *self, msg_t *msg)
 static void
 s_session (proxy_t *self, msg_t *msg)
 {
-    session_t *session = msg->u.session.session;
+    io_object_t *session = msg->u.session.session;
     assert (session);
 
     msg_t *msg2 = msg_new (ZKERNEL_START_IO);
     if (msg2) {
-        const unsigned long session_id =
-            self->next_session_id++;
         actor_send (self->socket, msg);
 
-        msg2->u.start_io.object_id = session_id;
-        msg2->u.start_io.io_object = (io_object_t *) session;
+        msg2->u.start_io.io_object = session;
         msg2->u.start_io.reply_to = self->actor_ifc;
         reactor_send (self->reactor, msg2);
     }
     else {
-        session_destroy (&session);
+        io_object_destroy (&session);
         msg_destroy (&msg);
     }
 }

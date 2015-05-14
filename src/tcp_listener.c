@@ -153,7 +153,7 @@ io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval)
         if (msg == NULL)
             tcp_session_destroy (&session);
         else {
-            msg->u.session.session = (session_t *) session;
+            msg->u.session.session = (io_object_t *) session;
             proxy_send (socket_proxy (self->owner), msg);
         }
     }

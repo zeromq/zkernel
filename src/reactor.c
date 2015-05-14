@@ -264,7 +264,6 @@ s_start_io (reactor_t *self, msg_t *msg)
     assert (self);
 
     io_object_t *io_object = msg->u.start_io.io_object;
-    const unsigned long object_id = msg->u.start_io.object_id;
 
     struct event_source *ev_src = malloc (sizeof *ev_src);
     io_object->io_handle = ev_src;
@@ -293,7 +292,6 @@ s_start_io (reactor_t *self, msg_t *msg)
     }
 
     msg->msg_type = ZKERNEL_START_IO_ACK;
-    msg->u.start_io_ack.object_id = object_id;
     msg->u.start_io_ack.io_handle = ev_src;
     return;
 
@@ -301,13 +299,11 @@ error:
     if (ev_src)
         free (ev_src);
     msg->msg_type = ZKERNEL_START_IO_NAK;
-    msg->u.start_io_nak.object_id = object_id;
 }
 
 static void
 s_stop_io (reactor_t *self, msg_t *msg)
 {
-    const unsigned long object_id = msg->u.stop_io.object_id;
     struct event_source *ev_src =
         (struct event_source *) msg->u.stop_io.io_handle;
     assert (ev_src);
@@ -326,7 +322,6 @@ s_stop_io (reactor_t *self, msg_t *msg)
     free (ev_src);
 
     msg->msg_type = ZKERNEL_STOP_IO_ACK;
-    msg->u.stop_io_ack.object_id = object_id;
 }
 
 void
