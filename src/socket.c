@@ -35,6 +35,11 @@ struct socket {
     struct actor actor_ifc;
 };
 
+struct session {
+    void *io_handle;
+    io_object_t *io_object;
+};
+
 static int
     s_enqueue_msg (void *self_, struct msg_t *msg);
 
@@ -49,6 +54,16 @@ static void
 
 static void
     s_session_closed (socket_t *self, msg_t *msg);
+
+static void *
+s_new_session ()
+{
+    struct session *session =
+        (struct session *) malloc (sizeof *session);
+    if (session)
+        *session = (struct session) { .io_handle = NULL };
+    return session;
+}
 
 socket_t *
 socket_new (dispatcher_t *dispatcher, reactor_t *reactor)
@@ -70,7 +85,8 @@ socket_new (dispatcher_t *dispatcher, reactor_t *reactor)
             .ftab = { .send = s_enqueue_msg }
         }
     };
-    self->proxy = proxy_new (&self->actor_ifc, dispatcher, reactor);
+    self->proxy = proxy_new (
+        &self->actor_ifc, s_new_session, dispatcher, reactor);
     if (self->proxy == NULL) {
         close (self->ctrl_fd);
         free (self);
@@ -268,17 +284,11 @@ s_wait_for_msgs (socket_t *self)
 static void
 s_session (socket_t *self, msg_t *msg)
 {
-    /*
     printf ("new session: %p\n", msg->u.session.session);
-    assert (self->active_sessions < MAX_SESSIONS);
-    session_t *session = NULL; // XXX msg->u.session.session;
-    for (int i = self->active_sessions; i < MAX_SESSIONS; i++)
-        if (self->sessions [i] == NULL) {
-            self->sessions [i] = self->sessions [self->active_sessions];
-            self->sessions [self->active_sessions++] = session;
-            break;
-        }
-        */
+
+    struct session *session =
+        (struct session *) msg->u.session.socket_handle;
+    session->io_object = msg->u.session.session;
 }
 
 static void

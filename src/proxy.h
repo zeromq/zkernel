@@ -15,11 +15,12 @@
 typedef struct proxy proxy_t;
 
 proxy_t *
-    proxy_new (actor_t *socket, dispatcher_t *dispatcher, reactor_t *reactor);
+    proxy_new (actor_t *socket, void *(*handle_alocator) (), dispatcher_t *dispatcher, reactor_t *reactor);
 
 void
     proxy_send (proxy_t *self, msg_t *msg);
 
 void
     proxy_destroy (proxy_t **self_p);
+
 #endif

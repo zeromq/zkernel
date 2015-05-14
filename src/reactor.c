@@ -27,6 +27,7 @@ struct event_source {
     uint64_t timer;
     uint32_t event_mask;
     io_object_t *io_object;
+    void *socket_handle;
 };
 
 struct timer {
@@ -273,7 +274,8 @@ s_start_io (reactor_t *self, msg_t *msg)
 
     *ev_src = (struct event_source) {
         .fd = -1,
-        .io_object = io_object
+        .io_object = io_object,
+        .socket_handle = msg->u.start_io.socket_handle,
     };
 
     int fd = -1;
@@ -292,13 +294,14 @@ s_start_io (reactor_t *self, msg_t *msg)
     }
 
     msg->msg_type = ZKERNEL_START_IO_ACK;
-    msg->u.start_io_ack.io_handle = ev_src;
+    msg->u.start_io_ack.socket_handle = ev_src->socket_handle;
     return;
 
 error:
     if (ev_src)
         free (ev_src);
     msg->msg_type = ZKERNEL_START_IO_NAK;
+    msg->u.start_io_nak.socket_handle = ev_src->socket_handle;
 }
 
 static void

@@ -19,20 +19,21 @@ struct msg_t {
     union {
         struct {
             struct io_object *session;
+            void *socket_handle;
         } session;
 
         struct {
             struct io_object *io_object;
+            void *socket_handle;
             actor_t reply_to;
         } start_io;
 
         struct {
-            struct io_object *io_object;
-            void *io_handle;
+            void *socket_handle;
         } start_io_ack;
 
         struct {
-            struct io_object *io_object;
+            void *socket_handle;
         } start_io_nak;
 
         struct {
