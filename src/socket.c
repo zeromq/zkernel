@@ -15,7 +15,6 @@
 #include "dispatcher.h"
 #include "reactor.h"
 #include "proxy.h"
-#include "session.h"
 #include "io_object.h"
 #include "socket.h"
 #include "atomic.h"
@@ -29,7 +28,6 @@ struct socket {
     reactor_t *reactor;
     proxy_t *proxy;
     void *mbox;
-    session_t *sessions [MAX_SESSIONS];
     unsigned long listener_next_id;
     unsigned long connector_next_id;
     size_t current_session;
@@ -270,6 +268,7 @@ s_wait_for_msgs (socket_t *self)
 static void
 s_session (socket_t *self, msg_t *msg)
 {
+    /*
     printf ("new session: %p\n", msg->u.session.session);
     assert (self->active_sessions < MAX_SESSIONS);
     session_t *session = NULL; // XXX msg->u.session.session;
@@ -279,6 +278,7 @@ s_session (socket_t *self, msg_t *msg)
             self->sessions [self->active_sessions++] = session;
             break;
         }
+        */
 }
 
 static void

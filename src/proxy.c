@@ -12,7 +12,7 @@
 #include "dispatcher.h"
 #include "reactor.h"
 #include "proxy.h"
-#include "session.h"
+#include "io_object.h"
 #include "zkernel.h"
 
 struct proxy {

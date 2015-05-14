@@ -13,7 +13,6 @@
 #include <sys/socket.h>
 #include "io_object.h"
 #include "tcp_listener.h"
-#include "session.h"
 #include "tcp_session.h"
 #include "msg.h"
 #include <arpa/inet.h>
