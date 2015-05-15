@@ -11,11 +11,12 @@
 #include "actor.h"
 #include "dispatcher.h"
 #include "reactor.h"
+#include "zkernel.h"
 
 typedef struct proxy proxy_t;
 
 proxy_t *
-    proxy_new (actor_t *socket, void *(*handle_alocator) (), dispatcher_t *dispatcher, reactor_t *reactor);
+    proxy_new (actor_t *socket, io_descriptor_t *(*session_alocator) (), dispatcher_t *dispatcher, reactor_t *reactor);
 
 void
     proxy_send (proxy_t *self, msg_t *msg);

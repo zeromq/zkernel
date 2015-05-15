@@ -17,7 +17,7 @@
 
 struct proxy {
     actor_t *socket;
-    void *(*handle_allocator) ();
+    io_descriptor_t *(*session_allocator) ();
     dispatcher_t *dispatcher;
     reactor_t *reactor;
     struct actor actor_ifc;
@@ -27,13 +27,13 @@ static int
     s_enqueue_msg (void *self_, struct msg_t *msg);
 
 proxy_t *
-proxy_new (actor_t *socket, void *(*handle_allocator) (), dispatcher_t *dispatcher, reactor_t *reactor)
+proxy_new (actor_t *socket, io_descriptor_t *(*object_allocator) (), dispatcher_t *dispatcher, reactor_t *reactor)
 {
     proxy_t *self = (proxy_t *) malloc (sizeof *self);
     if (self) {
         *self = (proxy_t) {
             .socket = socket,
-            .handle_allocator = handle_allocator,
+            .session_allocator = object_allocator,
             .dispatcher = dispatcher,
             .reactor = reactor,
             .actor_ifc = {
@@ -77,18 +77,18 @@ s_session (proxy_t *self, msg_t *msg)
     io_object_t *session = msg->u.session.session;
     assert (session);
 
-    void *socket_handle = self->handle_allocator ();
+    io_descriptor_t *io_descriptor = self->session_allocator ();
     msg_t *msg2 = msg_new (ZKERNEL_START_IO);
 
-    if (socket_handle && msg2) {
+    if (io_descriptor && msg2) {
         actor_send (self->socket, msg);
         msg2->u.start_io.io_object = session;
-        msg2->u.start_io.socket_handle = socket_handle;
+        msg2->u.start_io.io_descriptor = io_descriptor;
         msg2->u.start_io.reply_to = self->actor_ifc;
         reactor_send (self->reactor, msg2);
     }
     else {
-        free (socket_handle);
+        free (io_descriptor);
         io_object_destroy (&session);
         msg_destroy (&msg);
     }

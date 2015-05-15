@@ -36,7 +36,17 @@ struct socket {
 };
 
 struct session {
-    void *io_handle;
+    io_descriptor_t base;
+    io_object_t *io_object;
+};
+
+struct listener {
+    io_descriptor_t base;
+    io_object_t *io_object;
+};
+
+struct connector {
+    io_descriptor_t base;
     io_object_t *io_object;
 };
 
@@ -55,14 +65,34 @@ static void
 static void
     s_session_closed (socket_t *self, msg_t *msg);
 
-static void *
+static io_descriptor_t *
 s_new_session ()
 {
     struct session *session =
         (struct session *) malloc (sizeof *session);
     if (session)
-        *session = (struct session) { .io_handle = NULL };
-    return session;
+        *session = (struct session) { .io_object = NULL };
+    return &session->base;
+}
+
+static void *
+s_new_listener ()
+{
+    struct listener *listener =
+        (struct listener *) malloc (sizeof *listener);
+    if (listener)
+        *listener = (struct listener) { .io_object = NULL };
+    return listener;
+}
+
+static struct connector *
+s_new_connector ()
+{
+    struct connector *connector =
+        (struct connector *) malloc (sizeof *connector);
+    if (connector)
+        *connector = (struct connector) { .io_object = NULL };
+    return connector;
 }
 
 socket_t *
@@ -143,13 +173,21 @@ process_msg (socket_t *self, msg_t **msg_p)
 }
 
 int
-socket_listen (socket_t *self, io_object_t *listener)
+socket_listen (socket_t *self, io_object_t *io_object)
 {
+    assert (self);
+
     msg_t *msg = msg_new (ZKERNEL_START_IO);
     if (!msg)
         return -1;
+    struct listener *listener = s_new_listener ();
+    if (listener == NULL) {
+        msg_destroy (&msg);
+        return -1;
+    }
 
-    msg->u.start_io.io_object = listener;
+    msg->u.start_io.io_object = io_object;
+    msg->u.start_io.io_descriptor = &listener->base;
     msg->u.start_io.reply_to = self->actor_ifc;
 
     reactor_send (self->reactor, msg);
@@ -158,15 +196,21 @@ socket_listen (socket_t *self, io_object_t *listener)
 }
 
 int
-socket_connect (socket_t *self, io_object_t *connector)
+socket_connect (socket_t *self, io_object_t *io_object)
 {
     assert (self);
 
     msg_t *msg = msg_new (ZKERNEL_START_IO);
     if (!msg)
         return -1;
+    struct connector *connector = s_new_connector ();
+    if (connector == NULL) {
+        msg_destroy (&msg);
+        return -1;
+    }
 
-    msg->u.start_io.io_object = connector;
+    msg->u.start_io.io_object = io_object;
+    msg->u.start_io.io_descriptor = &connector->base;
     msg->u.start_io.reply_to = self->actor_ifc;
 
     reactor_send (self->reactor, msg);
@@ -287,7 +331,7 @@ s_session (socket_t *self, msg_t *msg)
     printf ("new session: %p\n", msg->u.session.session);
 
     struct session *session =
-        (struct session *) msg->u.session.socket_handle;
+        (struct session *) msg->u.session.io_descriptor;
     session->io_object = msg->u.session.session;
 }
 

@@ -33,4 +33,7 @@
 #define ZKERNEL_WRITE_OK        0x08
 #define ZKERNEL_ENGINE_DONE     0x20
 
+typedef struct {
+} io_descriptor_t;
+
 #endif

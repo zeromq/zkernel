@@ -7,6 +7,7 @@
 #ifndef __MSG_H_INCLUDED__
 #define __MSG_H_INCLUDED__
 
+#include "zkernel.h"
 #include "actor.h"
 
 struct io_object;
@@ -19,21 +20,21 @@ struct msg_t {
     union {
         struct {
             struct io_object *session;
-            void *socket_handle;
+            io_descriptor_t *io_descriptor;
         } session;
 
         struct {
             struct io_object *io_object;
-            void *socket_handle;
+            io_descriptor_t *io_descriptor;
             actor_t reply_to;
         } start_io;
 
         struct {
-            void *socket_handle;
+            io_descriptor_t *io_descriptor;
         } start_io_ack;
 
         struct {
-            void *socket_handle;
+            io_descriptor_t *io_descriptor;
         } start_io_nak;
 
         struct {
