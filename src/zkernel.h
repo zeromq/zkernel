@@ -19,6 +19,7 @@
 #define ZKERNEL_STOP_IO         5
 #define ZKERNEL_STOP_IO_ACK     6
 #define ZKERNEL_SESSION_CLOSED  7
+#define ZKERNEL_SESSION_ERROR   8
 
 //  Frame ID
 #define ZKERNEL_MSG_TYPE_PDU    32

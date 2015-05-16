@@ -48,7 +48,12 @@ struct msg_t {
         } stop_io_ack;
 
         struct {
+            io_descriptor_t *io_descriptor;
         } session_closed;
+
+        struct {
+            io_descriptor_t *io_descriptor;
+        } session_error;
 
     } u;
 };
