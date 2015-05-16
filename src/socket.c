@@ -21,17 +21,11 @@
 #include "msg.h"
 #include "zkernel.h"
 
-#define MAX_SESSIONS 8
-
 struct socket {
     int ctrl_fd;
     reactor_t *reactor;
     proxy_t *proxy;
     void *mbox;
-    unsigned long listener_next_id;
-    unsigned long connector_next_id;
-    size_t current_session;
-    size_t active_sessions;
     struct actor actor_ifc;
 };
 
@@ -224,36 +218,6 @@ socket_send_msg (socket_t *self, msg_t *msg)
     assert (self);
     s_enqueue_msg (self, msg);
 }
-
-/*
-int
-socket_send (socket_t *self, const char *data, size_t size)
-{
-    assert (self);
-    if (self->active_sessions == 0)
-        return -1;
-    tcp_session_t *session = self->sessions [self->current_session];
-    assert (session);
-    const int rc = tcp_session_send (session, data, size);
-    if (rc == -1) {
-        msg_t *msg = msg_new (ZKERNEL_ACTIVATE);
-        assert (msg);
-        msg->event_mask = ZKERNEL_POLLOUT;
-        reactor_send (self->reactor, msg);
-        self->active_sessions--;
-        if (self->current_session < self->active_sessions) {
-            self->sessions [self->current_session] =
-                self->sessions [self->active_sessions];
-            self->sessions [self->active_sessions] = session;
-        }
-    }
-    else
-        self->current_session++;
-    if (self->current_session >= self->active_sessions)
-        self->current_session = 0;
-    return 0;
-}
-*/
 
 static void
 process_mbox (socket_t *self, msg_t *msg)
