@@ -280,7 +280,8 @@ s_start_io (reactor_t *self, msg_t *msg)
 
     int fd = -1;
     uint32_t timer_interval = 0;
-    const int rc = io_object_init (io_object, &fd, &timer_interval);
+    const int rc = io_object_init (
+        io_object, msg->u.start_io.io_descriptor, &fd, &timer_interval);
     if (fd == -1)
         goto error;
 

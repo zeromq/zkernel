@@ -56,9 +56,6 @@ static void
 static void
     s_session (socket_t *self, msg_t *msg);
 
-static void
-    s_session_closed (socket_t *self, msg_t *msg);
-
 static io_descriptor_t *
 s_new_session ()
 {
@@ -136,6 +133,11 @@ proxy_t *
 socket_proxy (socket_t *self)
 {
     return self->proxy;
+}
+
+static void
+s_session_closed (socket_t *self, msg_t *msg)
+{
 }
 
 static void
@@ -297,9 +299,4 @@ s_session (socket_t *self, msg_t *msg)
     struct session *session =
         (struct session *) msg->u.session.io_descriptor;
     session->io_object = msg->u.session.session;
-}
-
-static void
-s_session_closed (socket_t *self, msg_t *msg)
-{
 }

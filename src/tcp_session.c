@@ -25,6 +25,7 @@
 struct tcp_session {
     io_object_t base;
     int fd;
+    io_descriptor_t *io_descriptor;
     msg_queue_t *msg_queue;
     protocol_engine_t *protocol_engine;
     protocol_engine_info_t peinfo;
@@ -107,11 +108,12 @@ s_send_session_closed (tcp_session_t *self)
 {
     msg_t *msg = msg_new (ZKERNEL_SESSION_CLOSED);
     assert (msg);
+    msg->u.session_closed.io_descriptor = self->io_descriptor;
     socket_send_msg (self->owner, msg);
 }
 
 static int
-s_io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
+s_io_init (io_object_t *self_, io_descriptor_t *io_descriptor, int *fd, uint32_t *timer_interval)
 {
     tcp_session_t *self = (tcp_session_t *) self_;
     assert (self);
@@ -121,6 +123,7 @@ s_io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
     assert (flags != -1);
     int rc = fcntl (self->fd, F_SETFL, flags | O_NONBLOCK);
     assert (rc == 0);
+    self->io_descriptor = io_descriptor;
 
     *fd = self->fd;
     return ZKERNEL_POLLIN | ZKERNEL_POLLOUT;

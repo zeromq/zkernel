@@ -10,11 +10,12 @@
 #include <stdint.h>
 
 #include "msg.h"
+#include "zkernel.h"
 
 typedef struct io_object io_object_t;
 
 struct io_object_ops {
-    int (*init) (io_object_t *self, int *fd, uint32_t *timer_interval);
+    int (*init) (io_object_t *self, io_descriptor_t *io_descriptor, int *fd, uint32_t *timer_interval);
     void (*destroy) (io_object_t **self_p);
     int (*event) (io_object_t *self, uint32_t flags, int *fd, uint32_t *timer_interval);
     int (*message) (io_object_t *self, msg_t *msg);
@@ -30,9 +31,9 @@ void
     io_object_destroy (io_object_t **self_p);
 
 inline int
-io_object_init (io_object_t *self, int *fd, uint32_t *timer_interval)
+io_object_init (io_object_t *self, io_descriptor_t *io_descriptor, int *fd, uint32_t *timer_interval)
 {
-    return self->ops.init (self, fd, timer_interval);
+    return self->ops.init (self, io_descriptor, fd, timer_interval);
 }
 
 inline int

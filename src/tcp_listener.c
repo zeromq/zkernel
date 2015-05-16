@@ -29,7 +29,7 @@ struct tcp_listener {
 };
 
 static int
-    io_init (io_object_t *self_, int *fd, uint32_t *timer_interval);
+    io_init (io_object_t *self_, io_descriptor_t *io_descriptor, int *fd, uint32_t *timer_interval);
 
 static int
     io_event (io_object_t *self_, uint32_t flags, int *fd, uint32_t *timer_interval);
@@ -103,7 +103,7 @@ tcp_listener_bind (tcp_listener_t *self, unsigned short port)
 }
 
 static int
-io_init (io_object_t *self_, int *fd, uint32_t *timer_interval)
+io_init (io_object_t *self_, io_descriptor_t *io_descriptor, int *fd, uint32_t *timer_interval)
 {
     tcp_listener_t *self = (tcp_listener_t *) self_;
     assert (self);
